@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ia-ifinanzas — Administración, Compras & Condominio · iAGRI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Archivo',sans-serif;background:#04090f;color:#c8d8ea;}
+.mono{font-family:'Space Mono',monospace;}
+:root{
+  --bg:#04090f;--bg2:#081320;--bg3:#0d1c30;
+  --teal:#00bcd4;--teal2:#4dd0e1;
+  --green:#00d44c;--amber:#ffab00;--red:#ff5252;--blue:#448aff;
+  --purple:#7c4dff;--pink:#f06292;
+  --border:rgba(0,188,212,.12);--border2:rgba(255,255,255,.05);
+  --muted:#4a6a8a;--text:#c8d8ea;
+}
+.sb{width:244px;min-height:100vh;background:linear-gradient(180deg,#030810,#06101e 60%,#081520);position:fixed;top:0;left:0;z-index:40;display:flex;flex-direction:column;border-right:1px solid var(--border);}
+.main{margin-left:244px;min-height:100vh;}
+.topbar{background:rgba(4,9,15,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:8px 22px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;}
+.card{background:var(--bg2);border-radius:12px;border:1px solid var(--border2);padding:16px;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;}
+.b-ok{background:rgba(0,212,76,.1);color:#00d44c;border:1px solid rgba(0,212,76,.25);}
+.b-warn{background:rgba(255,171,0,.1);color:#ffab00;border:1px solid rgba(255,171,0,.25);}
+.b-crit{background:rgba(255,82,82,.1);color:#ff5252;border:1px solid rgba(255,82,82,.25);}
+.b-blue{background:rgba(68,138,255,.1);color:#448aff;border:1px solid rgba(68,138,255,.25);}
+.b-teal{background:rgba(0,188,212,.1);color:#00bcd4;border:1px solid rgba(0,188,212,.25);}
+.b-gray{background:rgba(74,106,138,.1);color:#4a6a8a;border:1px solid rgba(74,106,138,.2);}
+.b-purple{background:rgba(124,77,255,.1);color:#7c4dff;border:1px solid rgba(124,77,255,.25);}
+.btn{border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s;font-family:inherit;}
+.btn-t{background:linear-gradient(90deg,#006064,#00bcd4);color:#fff;}
+.btn-t:hover{filter:brightness(1.12);}
+.btn-g{background:linear-gradient(90deg,#00833a,#00d44c);color:#060f06;}
+.btn-o{background:transparent;color:#00bcd4;border:1.5px solid rgba(0,188,212,.4);}
+.btn-r{background:rgba(255,82,82,.12);color:#ff5252;border:1px solid rgba(255,82,82,.28);}
+.btn-sm{padding:4px 10px;font-size:10px;border-radius:6px;}
+input,select,textarea{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 11px;font-size:12px;width:100%;outline:none;transition:.2s;color:#c8d8ea;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:rgba(0,188,212,.5);background:rgba(0,188,212,.04);}
+select option{background:#081320;}
+label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{padding:8px 11px;text-align:left;background:rgba(255,255,255,.02);color:var(--muted);font-weight:700;font-size:10px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border2);}
+.tbl td{padding:8px 11px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle;}
+.tbl tr:hover td{background:rgba(0,188,212,.03);}
+.nit{display:flex;align-items:center;gap:8px;padding:7px 11px;cursor:pointer;border-radius:7px;margin:1px 6px;color:rgba(255,255,255,.4);transition:.12s;font-size:12px;font-weight:500;}
+.nit:hover{background:rgba(0,188,212,.08);color:#fff;}
+.nit.on{background:linear-gradient(90deg,rgba(0,188,212,.18),rgba(0,188,212,.06));color:#00bcd4;border-left:2px solid #00bcd4;padding-left:9px;}
+.sh{font-size:9px;color:rgba(255,255,255,.18);padding:10px 11px 3px;letter-spacing:1.3px;text-transform:uppercase;font-weight:800;}
+.login-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(0,188,212,.1),transparent),linear-gradient(180deg,#020810,#061525);}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.84);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:#081320;border-radius:16px;padding:22px;max-width:820px;width:100%;max-height:92vh;overflow-y:auto;border:1px solid var(--border);box-shadow:0 32px 80px rgba(0,0,0,.7);}
+.prog{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;transition:.3s;}
+.kpi{background:var(--bg2);border-radius:11px;border:1px solid var(--border2);padding:14px;cursor:pointer;transition:.15s;}
+.kpi:hover{border-color:rgba(0,188,212,.3);}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(30px);background:#081320;color:#c8d8ea;padding:8px 18px;border-radius:22px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;border:1px solid var(--border);max-width:90vw;}
+.wallet-card{border-radius:14px;padding:18px;position:relative;overflow:hidden;}
+.wallet-card::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="pg-login" class="login-bg">
+<div style="width:100%;max-width:440px;padding:20px;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(0,188,212,.6);margin-bottom:6px;">INTEGRATED FINANCE AI MODULE</div>
+    <div style="font-size:28px;font-weight:900;color:#e8f4fa;letter-spacing:-1px;">ia-ifinanzas</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:3px;">Administración · Compras · Condominio · FIIA · Powered by Akasha</div>
+  </div>
+  <div style="background:rgba(4,9,15,.9);border:1px solid rgba(0,188,212,.2);border-radius:16px;padding:26px;">
+    <div style="margin-bottom:11px;"><label>Usuario</label><input id="l-u" type="text" value="admin@iagri.app"></div>
+    <div style="margin-bottom:11px;"><label>Contraseña</label><input id="l-p" type="password" value="iAGRI2026!"></div>
+    <div style="margin-bottom:16px;"><label>Rol</label>
+      <select id="l-rol">
+        <option value="director">🧠 Alejandría — Directora CSO/Finanzas</option>
+        <option value="admin" selected>📊 Administrador Condominio</option>
+        <option value="compras">🛒 Jefe de Compras (Hermes)</option>
+        <option value="socio">💼 Socio / Inversionista</option>
+        <option value="contabilidad">📋 Contabilidad (Buda)</option>
+      </select>
+    </div>
+    <button id="btn-login" style="width:100%;padding:12px;background:linear-gradient(90deg,#006064,#00bcd4);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">INGRESAR → ia-ifinanzas</button>
+    <div id="l-err" style="display:none;color:#ff5252;font-size:11px;text-align:center;margin-top:8px;">Credenciales inválidas</div>
+  </div>
+  <div style="text-align:center;margin-top:12px;font-size:9px;color:rgba(255,255,255,.18);">ISO 9001 · Smart Contracts · FIIA Wallets · Blockchain Ledger</div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="pg-app" style="display:none;">
+<div class="sb">
+  <div style="padding:12px 10px 8px;border-bottom:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:9px;">
+      <!-- Teal hex logo -->
+      <svg width="34" height="34" viewBox="0 0 82 82"><defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#006064"/><stop offset="100%" style="stop-color:#00bcd4"/></linearGradient></defs><polygon points="41,4 76,22.5 76,59.5 41,78 6,59.5 6,22.5" fill="none" stroke="url(#tg)" stroke-width="2.5"/><text x="41" y="49" text-anchor="middle" font-family="Archivo,sans-serif" font-size="14" font-weight="900" fill="url(#tg)">iFIN</text></svg>
+      <div><div style="font-size:12px;font-weight:900;color:#e8f4fa;letter-spacing:-.3px;">ia-ifinanzas</div><div style="font-size:8px;color:rgba(0,188,212,.5);letter-spacing:1px;text-transform:uppercase;">Adm · Compras · Condo</div></div>
+    </div>
+  </div>
+  <nav style="flex:1;padding:4px 0;overflow-y:auto;scrollbar-width:thin;">
+    <div class="sh">General</div>
+    <div class="nit on" id="nav-dash" onclick="go('dash')"><span>📊</span><span>Dashboard</span></div>
+    <div class="sh">Condominio</div>
+    <div class="nit" id="nav-unidades" onclick="go('unidades')"><span>🏗️</span><span id="nav-und-lbl">Unidades</span></div>
+    <div class="nit" id="nav-alicuotas" onclick="go('alicuotas')"><span>💳</span><span>Alícuotas & Cobros</span></div>
+    <div class="nit" id="nav-tickets" onclick="go('tickets')"><span>🔧</span><span id="nav-tkt-lbl">Tickets Mantenimiento</span></div>
+    <div class="nit" id="nav-assets" onclick="go('assets')"><span>⚙️</span><span>Activos & Equipos</span></div>
+    <div class="sh">Compras</div>
+    <div class="nit" id="nav-rfq" onclick="go('rfq')"><span>📦</span><span id="nav-rfq-lbl">Órdenes RFQ</span></div>
+    <div class="nit" id="nav-vendors" onclick="go('vendors')"><span>🤝</span><span>Proveedores</span></div>
+    <div class="sh">Finanzas & FIIA</div>
+    <div class="nit" id="nav-treasury" onclick="go('treasury')"><span>📒</span><span>Tesorería Ledger</span></div>
+    <div class="nit" id="nav-wallets" onclick="go('wallets')"><span>💰</span><span>FIIA Wallets</span></div>
+    <div class="nit" id="nav-contratos" onclick="go('contratos')"><span>📜</span><span>Smart Contracts</span></div>
+    <div class="nit" id="nav-akasha" onclick="go('akasha')"><span>🧠</span><span>Akasha — CFO IA</span></div>
+  </nav>
+  <div style="padding:8px 10px;border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+      <div id="sb-av" style="width:32px;height:32px;border-radius:50%;background:rgba(0,188,212,.15);display:flex;align-items:center;justify-content:center;font-size:14px;border:1.5px solid rgba(0,188,212,.3);">💰</div>
+      <div><div style="color:#e8f4fa;font-size:11px;font-weight:700;" id="sb-name">Usuario</div><div style="color:rgba(0,188,212,.6);font-size:9px;text-transform:uppercase;" id="sb-rol">ROL</div></div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:5px;">
+      <a href="https://www.agricola.iagri.pro" target="_blank" style="flex:1;text-align:center;font-size:8px;color:#00d44c;background:rgba(0,212,76,.07);padding:3px;border-radius:4px;border:1px solid rgba(0,212,76,.12);text-decoration:none;">🌿</a>
+      <a href="https://laboratorio.iagri.pro" target="_blank" style="flex:1;text-align:center;font-size:8px;color:#c084fc;background:rgba(192,132,252,.07);padding:3px;border-radius:4px;border:1px solid rgba(192,132,252,.12);text-decoration:none;">🔬</a>
+      <a href="https://www.agroindustria.iagri.pro" target="_blank" style="flex:1;text-align:center;font-size:8px;color:#60a5fa;background:rgba(96,165,250,.07);padding:3px;border-radius:4px;border:1px solid rgba(96,165,250,.12);text-decoration:none;">🏭</a>
+    </div>
+    <button onclick="doLogout()" style="width:100%;background:rgba(255,255,255,.03);border:1px solid var(--border2);color:rgba(255,255,255,.3);border-radius:5px;padding:4px;font-size:9px;cursor:pointer;">↩ Salir</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div style="font-size:15px;font-weight:900;color:#e8f4fa;" id="topbar-title">Dashboard</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <div id="clock" style="font-size:10px;color:#00bcd4;font-family:'Space Mono',monospace;background:rgba(0,188,212,.07);padding:3px 8px;border-radius:5px;border:1px solid rgba(0,188,212,.15);">--:--</div>
+      <span id="topbar-badge" class="badge b-teal" style="font-size:9px;">CFO</span>
+    </div>
+  </div>
+
+  <div style="padding:16px 22px;" id="content">
+
+    <!-- DASHBOARD -->
+    <div id="sec-dash">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;" id="dash-kpis"></div>
+      <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px;">
+        <div class="card" id="dash-cashflow-card">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">💰 Flujo de Caja — Abril 2026</div>
+          <div id="dash-cashflow"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🏗️ Salud Condominio</div>
+          <div id="dash-condo-health"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+        <div class="card"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">📦 RFQs Activos</div><div id="dash-rfqs"></div></div>
+        <div class="card"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">🔧 Tickets Pendientes</div><div id="dash-tickets-widget"></div></div>
+        <div class="card"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">💳 FIIA Wallets</div><div id="dash-wallets-widget"></div></div>
+      </div>
+    </div>
+
+    <!-- UNIDADES -->
+    <div id="sec-unidades" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px;">
+        <div><div style="font-size:20px;font-weight:900;color:#e8f4fa;">🏗️ Unidades del Condominio</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">78 Ha · Parque Industrial Agrícola · Propiedad Horizontal Agrotech</div></div>
+        <button class="btn btn-t btn-sm" onclick="showModalUnidad()">+ Nueva Unidad</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="unidades-grid"></div>
+    </div>
+
+    <!-- ALÍCUOTAS -->
+    <div id="sec-alicuotas" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px;">
+        <div><div style="font-size:20px;font-weight:900;color:#e8f4fa;">💳 Alícuotas & Cobros</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Cargos fijos + Variables IoT (agua, energía, Fertisal)</div></div>
+        <div style="display:flex;gap:7px;">
+          <select id="alic-mes" onchange="loadAlicuotas()" style="width:130px;font-size:11px;padding:5px 9px;"><option value="2026-04">Abril 2026</option><option value="2026-03">Marzo 2026</option></select>
+          <button class="btn btn-g btn-sm" onclick="generarAlicuotas()">⚡ Generar Mes</button>
+        </div>
+      </div>
+      <!-- Summary -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;" id="alic-summary"></div>
+      <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th>Unidad</th><th>Socio</th><th>Cargo Fijo</th><th>Agua</th><th>Energía</th><th>Fertisal</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody id="alicuotas-tbody"></tbody></table></div>
+    </div>
+
+    <!-- TICKETS -->
+    <div id="sec-tickets" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;">
+        <div><div style="font-size:20px;font-weight:900;color:#e8f4fa;">🔧 Tickets de Mantenimiento</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Agente Vulcano · Facility Management · Áreas comunes</div></div>
+        <button class="btn btn-t btn-sm" onclick="showModalTicket()">+ Nuevo Ticket</button>
+      </div>
+      <div id="tickets-list"></div>
+    </div>
+
+    <!-- ASSETS -->
+    <div id="sec-assets" style="display:none;">
+      <div style="font-size:20px;font-weight:900;color:#e8f4fa;margin-bottom:4px;">⚙️ Activos del Condominio</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Planta Alejandría · CCTV · Red Eléctrica · Caminos · Cuartos Fríos</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="assets-grid"></div>
+    </div>
+
+    <!-- RFQ -->
+    <div id="sec-rfq" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;">
+        <div><div style="font-size:20px;font-weight:900;color:#e8f4fa;">📦 Órdenes de Compra (RFQ)</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Agente Hermes · Smart Procurement · Licitación automática</div></div>
+        <button class="btn btn-t btn-sm" onclick="showModalRFQ()">+ Nueva RFQ</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th>Código</th><th>Descripción</th><th>UP</th><th>Monto Máx.</th><th>Req.</th><th>Prioridad</th><th>Trigger</th><th>Estado</th><th>Proveedor</th><th></th></tr></thead><tbody id="rfq-tbody"></tbody></table></div>
+    </div>
+
+    <!-- VENDORS -->
+    <div id="sec-vendors" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;">
+        <div><div style="font-size:20px;font-weight:900;color:#e8f4fa;">🤝 Proveedores Homologados</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Portal B2B · Score calidad · OTIF · Certificaciones</div></div>
+        <button class="btn btn-t btn-sm" onclick="showModalVendor()">+ Registrar Proveedor</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="vendors-grid"></div>
+    </div>
+
+    <!-- TESORERÍA -->
+    <div id="sec-treasury" style="display:none;">
+      <div style="font-size:20px;font-weight:900;color:#e8f4fa;margin-bottom:4px;">📒 Tesorería — Ledger</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Agente Buda · Libro mayor inmutable · DPO vs DSO</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;" id="treasury-summary"></div>
+      <div class="card" style="padding:0;overflow:hidden;"><table class="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>UP</th><th>Estado</th></tr></thead><tbody id="treasury-tbody"></tbody></table></div>
+    </div>
+
+    <!-- WALLETS FIIA -->
+    <div id="sec-wallets" style="display:none;">
+      <div style="font-size:20px;font-weight:900;color:#e8f4fa;margin-bottom:4px;">💰 FIIA Wallets</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Billeteras internas · Escrow · Split Payments · Reinversión automática</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="wallets-grid"></div>
+      <div class="card" style="margin-top:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Transferencia entre Wallets</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:flex-end;">
+          <div><label>Origen</label><select id="tx-origen" style="font-size:11px;padding:6px;"><option value="">—</option></select></div>
+          <div><label>Destino</label><select id="tx-destino" style="font-size:11px;padding:6px;"><option value="">—</option></select></div>
+          <div><label>Monto (USD)</label><input id="tx-monto" type="number" placeholder="0.00" style="padding:6px;"></div>
+          <button class="btn btn-g btn-sm" onclick="ejecutarTransferencia()" style="margin-bottom:1px;">Ejecutar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMART CONTRACTS -->
+    <div id="sec-contratos" style="display:none;">
+      <div style="font-size:20px;font-weight:900;color:#e8f4fa;margin-bottom:4px;">📜 Smart Contracts</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Liquidaciones automáticas · Dividendos socios · Pago proveedores logísticos</div>
+      <div id="contratos-list"></div>
+    </div>
+
+    <!-- AKASHA CFO -->
+    <div id="sec-akasha" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;height:calc(100vh - 140px);">
+        <div class="card" style="display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border2);">
+            <!-- Alejandría avatar text representation -->
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,rgba(0,188,212,.25),rgba(0,96,100,.3));display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid rgba(0,188,212,.4);">🧠</div>
+            <div><div style="font-size:13px;font-weight:800;color:#e8f4fa;">Alejandría — CFO / CSO</div><div style="font-size:10px;color:#00d44c;">● En línea · Agente Finanzas & Estrategia</div></div>
+          </div>
+          <div id="chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;scrollbar-width:thin;"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <input id="chat-input" type="text" placeholder="Consulta financiera a Alejandría..." onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn-t" onclick="sendChat()" id="chat-btn" style="padding:8px 14px;">→</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;" id="chat-quick"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Estado Financiero Global</div><div id="akasha-finstate"></div></div>
+          <div class="card" style="flex:1;overflow-y:auto;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Simulador "What-If"</div><div id="akasha-whatif"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-bg" style="display:none;" class="modal-bg">
+  <div class="modal" id="modal-inner">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:800;color:#e8f4fa;" id="modal-title">Modal</div>
+      <button onclick="closeModal()" style="background:rgba(255,255,255,.06);border:none;border-radius:6px;padding:5px 9px;cursor:pointer;color:#94a3b8;font-size:14px;">✕</button>
+    </div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ══ CONFIG ══
+var SURL='https://crfghwtfqaplzsmwylxe.supabase.co';
+var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyZmdod3RmcWFwbHpzbXd5bHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjc1MjksImV4cCI6MjA5MDkwMzUyOX0.WUNkTqU93H92nohb_Idqhu8nV1JblFvVRk6Lf_PJw64';
+var db=null;
+(function(){try{if(window.supabase&&window.supabase.createClient)db=window.supabase.createClient(SURL,SKEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});}catch(e){}})();
+function dbQ(fn){if(!db)return Promise.resolve({data:null,error:{message:'offline'}});try{return fn(db);}catch(e){return Promise.resolve({data:null,error:String(e)});}}
+function v(id){var e=document.getElementById(id);return e?e.value:'';}
+function _n(id){var n=parseFloat(v(id));return isNaN(n)?null:n;}
+
+// ══ SIM DATA ══
+var SIM_UNITS=[
+  {unit_id:'cu-01',codigo:'INV-01',nombre:'Invernadero Nave 01',tipo:'Invernadero',socio_nombre:'Inversionista FIAA #001',area_m2:10000,alicuota_fija:850,consumo_agua_m3:280,consumo_kwh:1850,estado:'Activo'},
+  {unit_id:'cu-02',codigo:'INV-03',nombre:'Invernadero Nave 03',tipo:'Invernadero',socio_nombre:'Javier Mena (Propietario)',area_m2:10000,alicuota_fija:850,consumo_agua_m3:310,consumo_kwh:1920,estado:'Activo'},
+  {unit_id:'cu-03',codigo:'INV-05',nombre:'Invernadero Nave 05',tipo:'Invernadero',socio_nombre:'Socio #003',area_m2:10000,alicuota_fija:850,consumo_agua_m3:265,consumo_kwh:1780,estado:'Activo'},
+  {unit_id:'cu-04',codigo:'INV-14',nombre:'Invernadero Nave 14',tipo:'Invernadero',socio_nombre:'Socio Premium #777',area_m2:10000,alicuota_fija:850,consumo_agua_m3:420,consumo_kwh:2100,estado:'Activo'},
+  {unit_id:'cu-05',codigo:'CM-01',nombre:'Casa Malla 01',tipo:'CasaMalla',socio_nombre:'Cooperativa Lechuga SV',area_m2:8000,alicuota_fija:620,consumo_agua_m3:185,consumo_kwh:980,estado:'Activo'},
+  {unit_id:'cu-06',codigo:'CA-01',nombre:'Campo Abierto Zona 01',tipo:'CampoAbierto',socio_nombre:'Socio #010',area_m2:43750,alicuota_fija:380,consumo_agua_m3:890,consumo_kwh:420,estado:'Activo'},
+  {unit_id:'cu-07',codigo:'AREA-COMUN',nombre:'Áreas Comunes Generales',tipo:'AreaComun',socio_nombre:'Condominio Hidroexpo',area_m2:0,alicuota_fija:0,consumo_agua_m3:0,consumo_kwh:0,estado:'Activo'}
+];
+var SIM_FACTURACION=[
+  {unit_id:'cu-01',socio_nombre:'Inversionista FIAA #001',mes_fiscal:'2026-04',monto_fijo:850,monto_agua:224,monto_energia:148,monto_fertisal:3200,monto_total:4422,estado_pago:'Pagado'},
+  {unit_id:'cu-02',socio_nombre:'Javier Mena (Propietario)',mes_fiscal:'2026-04',monto_fijo:850,monto_agua:248,monto_energia:154,monto_fertisal:3580,monto_total:4832,estado_pago:'Pagado'},
+  {unit_id:'cu-03',socio_nombre:'Socio #003',mes_fiscal:'2026-04',monto_fijo:850,monto_agua:212,monto_energia:142,monto_fertisal:2980,monto_total:4184,estado_pago:'Pendiente'},
+  {unit_id:'cu-04',socio_nombre:'Socio Premium #777',mes_fiscal:'2026-04',monto_fijo:850,monto_agua:336,monto_energia:168,monto_fertisal:4850,monto_total:6204,estado_pago:'Pendiente'},
+  {unit_id:'cu-05',socio_nombre:'Cooperativa Lechuga SV',mes_fiscal:'2026-04',monto_fijo:620,monto_agua:148,monto_energia:78,monto_fertisal:1850,monto_total:2696,estado_pago:'Vencido'},
+  {unit_id:'cu-06',socio_nombre:'Socio #010',mes_fiscal:'2026-04',monto_fijo:380,monto_agua:712,monto_energia:34,monto_fertisal:0,monto_total:1126,estado_pago:'Pendiente'}
+];
+var SIM_VENDORS=[
+  {vendor_id:'vnd-01',codigo:'FERTISAL-CA',nombre:'Fertisalca — Soluciones Nutritivas',categoria:'Insumos',score_calidad:9.4,score_otif:98.5,dias_credito:30,certificaciones:['ISO 9001','NSF'],estado:'Activo'},
+  {vendor_id:'vnd-02',codigo:'EMPAQ-SV',nombre:'Empaques El Salvador',categoria:'Insumos',score_calidad:8.8,score_otif:96.2,dias_credito:45,certificaciones:['ISO 9001'],estado:'Activo'},
+  {vendor_id:'vnd-03',codigo:'AGROCHEM-SV',nombre:'AgroChem El Salvador',categoria:'Insumos',score_calidad:9.1,score_otif:97.8,dias_credito:30,certificaciones:['ISO 9001','FDA','GlobalGAP'],estado:'Activo'},
+  {vendor_id:'vnd-04',codigo:'TRANSPORTE-ACJ',nombre:'Transporte Refrigerado Acajutla',categoria:'Logistica',score_calidad:8.5,score_otif:94.0,dias_credito:15,certificaciones:['Incoterms 2020'],estado:'Activo'},
+  {vendor_id:'vnd-05',codigo:'MANTIAGRI',nombre:'Manteni-Agri (Construcción)',categoria:'Construccion',score_calidad:8.2,score_otif:91.5,dias_credito:30,certificaciones:['ISO 45001'],estado:'Activo'},
+  {vendor_id:'vnd-06',codigo:'TECH-IOT-SV',nombre:'TechIoT SV (Sensores)',categoria:'TI',score_calidad:9.6,score_otif:99.1,dias_credito:60,certificaciones:['ISO 9001','CE'],estado:'Activo'}
+];
+var SIM_RFQ=[
+  {rfq_id:'rfq-001',codigo:'RFQ-2026-0001',descripcion:'Cajas Master Tomate Cherry (400u)',categoria:'Insumos',up_id:'cu-02',cantidad:400,unidad:'unidades',fecha_requerida:'2026-05-10',presupuesto_max:1600,prioridad:'Alta',estado:'Adjudicado',vendor_ganador:'vnd-02',precio_adjudicado:1480,trigger_tipo:'MRP_Auto'},
+  {rfq_id:'rfq-002',codigo:'RFQ-2026-0002',descripcion:'Fertisalca CA — Solución A+B 2000L',categoria:'Insumos',up_id:'cu-04',cantidad:2000,unidad:'litros',fecha_requerida:'2026-04-25',presupuesto_max:3200,prioridad:'Urgente',estado:'Adjudicado',vendor_ganador:'vnd-01',precio_adjudicado:2980,trigger_tipo:'Akasha'},
+  {rfq_id:'rfq-003',codigo:'RFQ-2026-0003',descripcion:'Mantenimiento Fertirriego INV-07',categoria:'Servicios',up_id:'cu-03',cantidad:1,unidad:'servicio',fecha_requerida:'2026-05-05',presupuesto_max:1200,prioridad:'Normal',estado:'Publicado',vendor_ganador:null,precio_adjudicado:null,trigger_tipo:'Mantenimiento'},
+  {rfq_id:'rfq-004',codigo:'RFQ-2026-0004',descripcion:'Sensores pH/CE reposición (10u)',categoria:'TI',up_id:null,cantidad:10,unidad:'unidades',fecha_requerida:'2026-05-15',presupuesto_max:2500,prioridad:'Normal',estado:'Borrador',vendor_ganador:null,precio_adjudicado:null,trigger_tipo:'Manual'},
+  {rfq_id:'rfq-005',codigo:'RFQ-2026-0005',descripcion:'Fungicida Botrytis 50kg',categoria:'Insumos',up_id:'cu-03',cantidad:50,unidad:'kg',fecha_requerida:'2026-04-22',presupuesto_max:850,prioridad:'Urgente',estado:'Adjudicado',vendor_ganador:'vnd-03',precio_adjudicado:780,trigger_tipo:'Akasha'}
+];
+var SIM_TREASURY=[
+  {tipo:'Ingreso',categoria:'Alicuota',descripcion:'Alícuota Abr 2026 — INV-01 FIAA',monto:4422,up_id:'cu-01',estado:'Ejecutado',fecha_tx:'2026-04-12'},
+  {tipo:'Ingreso',categoria:'Alicuota',descripcion:'Alícuota Abr 2026 — INV-03 Javier Mena',monto:4832,up_id:'cu-02',estado:'Ejecutado',fecha_tx:'2026-04-14'},
+  {tipo:'Egreso',categoria:'Insumos',descripcion:'OC Fertisalca — Solución A+B',monto:2980,up_id:'cu-04',estado:'Ejecutado',fecha_tx:'2026-04-20'},
+  {tipo:'Egreso',categoria:'Insumos',descripcion:'OC Empaques — Cajas Master',monto:1480,up_id:'cu-02',estado:'Ejecutado',fecha_tx:'2026-04-18'},
+  {tipo:'Egreso',categoria:'Servicios',descripcion:'Fee Tecnológico Akasha/iAGRI',monto:3200,up_id:null,estado:'Ejecutado',fecha_tx:'2026-04-15'},
+  {tipo:'Egreso',categoria:'RRHH',descripcion:'Nómina Operativa Abril 2026',monto:18500,up_id:null,estado:'Ejecutado',fecha_tx:'2026-04-30'},
+  {tipo:'Ingreso',categoria:'Exportacion',descripcion:'Commercial Bridge — Lote Málaga #4',monto:42000,up_id:'cu-04',estado:'Ejecutado',fecha_tx:'2026-04-16'},
+  {tipo:'Provision',categoria:'Dividendo',descripcion:'Provisión Dividendo Socio #777',monto:15400,up_id:'cu-04',estado:'Pendiente',fecha_tx:'2026-05-01'}
+];
+var SIM_WALLETS=[
+  {wallet_id:'wlt-escrow',tipo:'Escrow',nombre:'Cuenta Escrow Málaga',balance_usd:42000,balance_tokens:0,kyc_status:'Verificado',auto_reinversion:false},
+  {wallet_id:'wlt-operativa',tipo:'Operativa',nombre:'Cuenta Operativa iAGRI',balance_usd:28500,balance_tokens:0,kyc_status:'Verificado',auto_reinversion:false},
+  {wallet_id:'wlt-reserva',tipo:'Reserva',nombre:'Fondo Reserva Condominio',balance_usd:12000,balance_tokens:0,kyc_status:'Verificado',auto_reinversion:false},
+  {wallet_id:'wlt-socio-777',tipo:'Socio',nombre:'Wallet Socio Premium #777',balance_usd:8200,balance_tokens:125.5,kyc_status:'Verificado',auto_reinversion:true},
+  {wallet_id:'wlt-socio-001',tipo:'Socio',nombre:'Wallet Inversionista FIAA #001',balance_usd:4800,balance_tokens:80.0,kyc_status:'Verificado',auto_reinversion:false},
+  {wallet_id:'wlt-fertisal',tipo:'Proveedor',nombre:'Wallet Fertisalca',balance_usd:0,balance_tokens:0,kyc_status:'Pendiente',auto_reinversion:false}
+];
+var SIM_TICKETS=[
+  {ticket_id:'tkt-001',codigo:'TKT-2026-001',titulo:'Luminaria LED pasillo central sector 4',tipo:'Mantenimiento',prioridad:'Normal',estado:'EnProceso',reportado_por:'Capitán INV-03',agente_ia:'Vulcano',costo_estimado:85,created_at:'2026-04-17'},
+  {ticket_id:'tkt-002',codigo:'TKT-2026-002',titulo:'Fuga menor tubería principal zona norte',tipo:'Infraestructura',prioridad:'Alta',estado:'Abierto',reportado_por:'Capitán CM-01',agente_ia:'Vulcano',costo_estimado:320,created_at:'2026-04-18'},
+  {ticket_id:'tkt-003',codigo:'TKT-2026-003',titulo:'Cámara CCTV perimetro este sin señal',tipo:'Seguridad',prioridad:'Alta',estado:'Abierto',reportado_por:'Seguridad',agente_ia:'Vulcano',costo_estimado:150,created_at:'2026-04-18'},
+  {ticket_id:'tkt-004',codigo:'TKT-2026-004',titulo:'Bomba agua secundaria — ruido inusual',tipo:'Mantenimiento',prioridad:'Urgente',estado:'EnProceso',reportado_por:'Juan CTO',agente_ia:'Vulcano',costo_estimado:800,created_at:'2026-04-17'}
+];
+var SIM_ASSETS=[
+  {nombre:'Planta Alejandría — Bomba Principal',tipo:'Bomba',estado:'Operativo',proximo_mantenimiento:'2026-06-01',alerta_activa:false,responsable:'Juan (CTO)'},
+  {nombre:'Bomba Secundaria Backup',tipo:'Bomba',estado:'Alerta',proximo_mantenimiento:'2026-04-25',alerta_activa:true,responsable:'Juan (CTO)'},
+  {nombre:'Sistema CCTV Perimetral (24 cámaras)',tipo:'CCTV',estado:'Parcial',proximo_mantenimiento:'2026-05-15',alerta_activa:true,responsable:'Seguridad'},
+  {nombre:'Red Eléctrica Trifásica',tipo:'Red',estado:'Operativo',proximo_mantenimiento:'2026-07-01',alerta_activa:false,responsable:'Electro-SV'},
+  {nombre:'Camino Principal Asfaltado',tipo:'Camino',estado:'Operativo',proximo_mantenimiento:'2026-08-01',alerta_activa:false,responsable:'Mantenimiento'},
+  {nombre:'Cuarto Frío General 40T',tipo:'Refrigeración',estado:'Operativo',proximo_mantenimiento:'2026-05-30',alerta_activa:false,responsable:'Sara Agroindustria'}
+];
+
+// ══ STATE ══
+var me=null, UNITS=[], FACTURACION=[], VENDORS=[], RFQS=[], TREASURY=[], WALLETS=[], TICKETS=[], ASSETS=[];
+
+// ══ AUTH ══
+function doLogin(){
+  try{
+    var u=v('l-u').trim(),p=v('l-p').trim(),rol=v('l-rol');
+    var ok=(u==='admin@iagri.app'&&p==='iAGRI2026!')||(u==='admin@agrosense.co'&&p==='agro2026');
+    var err=document.getElementById('l-err');
+    if(!ok){if(err)err.style.display='block';return;}
+    if(err)err.style.display='none';
+    var names={director:'Alejandría — CSO/CFO',admin:'Administrador Condominio',compras:'Hermes — Jefe Compras',socio:'Socio Inversionista',contabilidad:'Buda — Contabilidad'};
+    var icons={director:'🧠',admin:'🏗️',compras:'📦',socio:'💼',contabilidad:'📋'};
+    me={email:u,rol:rol,nombre:names[rol]||'Usuario'};
+    var el=function(id){return document.getElementById(id);};
+    if(el('sb-av'))el('sb-av').textContent=icons[rol]||'💰';
+    if(el('sb-name'))el('sb-name').textContent=me.nombre;
+    if(el('sb-rol'))el('sb-rol').textContent=rol.toUpperCase();
+    if(el('topbar-badge'))el('topbar-badge').textContent=me.nombre.split(' ')[0];
+    if(el('pg-login'))el('pg-login').style.display='none';
+    if(el('pg-app'))el('pg-app').style.display='block';
+    initApp();
+  }catch(e){
+    console.error('Login error:',e);
+    var el2=function(id){return document.getElementById(id);};
+    me={rol:'admin',nombre:'Admin'};
+    if(el2('pg-login'))el2('pg-login').style.display='none';
+    if(el2('pg-app'))el2('pg-app').style.display='block';
+    UNITS=SIM_UNITS;FACTURACION=SIM_FACTURACION;VENDORS=SIM_VENDORS;
+    RFQS=SIM_RFQ;TREASURY=SIM_TREASURY;WALLETS=SIM_WALLETS;
+    TICKETS=SIM_TICKETS;ASSETS=SIM_ASSETS;
+    populateWalletSelects();go('dash');
+  }
+}
+document.getElementById('btn-login').onclick=doLogin;
+document.addEventListener('keydown',function(e){var pg=document.getElementById('pg-login');if(e.key==='Enter'&&pg&&pg.style.display!=='none')doLogin();});
+function doLogout(){me=null;document.getElementById('pg-app').style.display='none';document.getElementById('pg-login').style.display='flex';}
+setInterval(function(){var e=document.getElementById('clock');if(e)e.textContent=new Date().toLocaleString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit'});},1000);
+
+// ══ NAV ══
+var SECS=['dash','unidades','alicuotas','tickets','assets','rfq','vendors','treasury','wallets','contratos','akasha'];
+var TITLES={dash:'Dashboard · ia-ifinanzas',unidades:'Unidades Condominio',alicuotas:'Alícuotas & Cobros',tickets:'Tickets Mantenimiento',assets:'Activos & Equipos',rfq:'Órdenes de Compra RFQ',vendors:'Proveedores',treasury:'Tesorería Ledger',wallets:'FIIA Wallets',contratos:'Smart Contracts',akasha:'Alejandría — CFO IA'};
+var LOADERS={dash:loadDash,unidades:loadUnidades,alicuotas:loadAlicuotas,tickets:loadTickets,assets:loadAssets,rfq:loadRFQ,vendors:loadVendors,treasury:loadTreasury,wallets:loadWallets,contratos:loadContratos,akasha:loadAkasha};
+function go(sec){
+  SECS.forEach(function(s){var e=document.getElementById('sec-'+s);if(e)e.style.display=s===sec?'block':'none';});
+  SECS.forEach(function(s){var n=document.getElementById('nav-'+s);if(n)n.classList.toggle('on',s===sec);});
+  var tt=document.getElementById('topbar-title');if(tt)tt.textContent=TITLES[sec]||sec;
+  if(LOADERS[sec])try{LOADERS[sec]();}catch(er){console.error('Loader error',sec,er);}
+}
+function closeModal(){document.getElementById('modal-bg').style.display='none';}
+function openModal(title,html){document.getElementById('modal-title').textContent=title;document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-bg').style.display='flex';}
+var _t;function toast(msg,c){var e=document.getElementById('toast');e.textContent=msg;e.style.borderColor=c?c+'80':'var(--border)';e.style.opacity='1';e.style.transform='translateX(-50%) translateY(0)';clearTimeout(_t);_t=setTimeout(function(){e.style.opacity='0';e.style.transform='translateX(-50%) translateY(30px)';},3200);}
+
+// ══ INIT ══
+async function initApp(){
+  UNITS=SIM_UNITS;FACTURACION=SIM_FACTURACION;VENDORS=SIM_VENDORS;
+  RFQS=SIM_RFQ;TREASURY=SIM_TREASURY;WALLETS=SIM_WALLETS;
+  TICKETS=SIM_TICKETS;ASSETS=SIM_ASSETS;
+  populateWalletSelects();
+  go('dash');
+  if(db){
+    try{var r=await dbQ(function(d){return d.from('condo_units').select('*');});if(r&&r.data&&r.data.length)UNITS=r.data;}catch(e){}
+    try{var r2=await dbQ(function(d){return d.from('condo_facturacion').select('*').order('created_at',{ascending:false});});if(r2&&r2.data&&r2.data.length)FACTURACION=r2.data;}catch(e){}
+    try{var r3=await dbQ(function(d){return d.from('admin_vendors').select('*');});if(r3&&r3.data&&r3.data.length)VENDORS=r3.data;}catch(e){}
+    try{var r4=await dbQ(function(d){return d.from('procurement_rfq').select('*').order('created_at',{ascending:false});});if(r4&&r4.data&&r4.data.length)RFQS=r4.data;}catch(e){}
+    try{var r5=await dbQ(function(d){return d.from('admin_treasury').select('*').order('created_at',{ascending:false});});if(r5&&r5.data&&r5.data.length)TREASURY=r5.data;}catch(e){}
+    try{var r6=await dbQ(function(d){return d.from('fiia_wallets').select('*');});if(r6&&r6.data&&r6.data.length)WALLETS=r6.data;}catch(e){}
+    try{var r7=await dbQ(function(d){return d.from('condo_tickets').select('*').order('created_at',{ascending:false});});if(r7&&r7.data&&r7.data.length)TICKETS=r7.data;}catch(e){}
+    try{var r8=await dbQ(function(d){return d.from('condo_assets').select('*');});if(r8&&r8.data&&r8.data.length)ASSETS=r8.data;}catch(e){}
+    populateWalletSelects();
+    try{loadDash();}catch(e){}
+  }
+}
+
+function populateWalletSelects(){
+  ['tx-origen','tx-destino'].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    el.innerHTML='<option value="">—</option>'+WALLETS.map(function(w){return '<option value="'+w.wallet_id+'">'+w.nombre+' ($'+fmtN(w.balance_usd)+')</option>';}).join('');
+  });
+}
+
+// ══ DASHBOARD ══
+function loadDash(){
+  var ingresos=TREASURY.filter(function(t){return t.tipo==='Ingreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var egresos=TREASURY.filter(function(t){return t.tipo==='Egreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var saldoTotal=WALLETS.reduce(function(a,w){return a+w.balance_usd;},0);
+  var alicPend=FACTURACION.filter(function(f){return f.estado_pago==='Pendiente'||f.estado_pago==='Vencido';}).length;
+  var rfqsActive=RFQS.filter(function(r){return r.estado==='Publicado'||r.estado==='Borrador';}).length;
+  var ticketsOpen=TICKETS.filter(function(t){return t.estado==='Abierto'||t.estado==='EnProceso';}).length;
+  var KPIS=[
+    {icon:'💰',label:'Ingresos Abr',val:'$'+fmtM(ingresos),color:'#00d44c',sec:'treasury'},
+    {icon:'📉',label:'Egresos Abr',val:'$'+fmtM(egresos),color:'#ff5252',sec:'treasury'},
+    {icon:'🏦',label:'Saldo FIIA',val:'$'+fmtM(saldoTotal),color:'#00bcd4',sec:'wallets'},
+    {icon:'💳',label:'Alíc. Pend.',val:alicPend+' socios',color:alicPend>0?'#ffab00':'#00d44c',sec:'alicuotas'},
+    {icon:'📦',label:'RFQs Activos',val:rfqsActive,color:'#448aff',sec:'rfq'},
+    {icon:'🔧',label:'Tickets Open',val:ticketsOpen,color:ticketsOpen>0?'#ffab00':'#00d44c',sec:'tickets'}
+  ];
+  document.getElementById('dash-kpis').innerHTML=KPIS.map(function(k){
+    return '<div class="kpi" onclick="go(\''+k.sec+'\')" style="border-left:3px solid '+k.color+';">'
+      +'<div style="font-size:19px;">'+k.icon+'</div>'
+      +'<div style="font-size:9px;font-weight:700;color:var(--muted);margin:3px 0;text-transform:uppercase;">'+k.label+'</div>'
+      +'<div style="font-size:17px;font-weight:900;color:'+k.color+';">'+k.val+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Cashflow chart
+  var netFlow=ingresos-egresos;var nc=netFlow>=0?'#00d44c':'#ff5252';
+  var cats=[{l:'Exportación',v:42000,c:'#00d44c'},{l:'Alícuotas',v:9254,c:'#00bcd4'},{l:'Insumos',v:4460,c:'#ff5252'},{l:'RRHH',v:18500,c:'#ffab00'},{l:'Servicios & Fee',v:3200,c:'#448aff'}];
+  document.getElementById('dash-cashflow').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+    +'<div>'
+    +cats.map(function(c){var pct=Math.round(c.v/ingresos*100);return '<div style="margin-bottom:7px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span>'+c.l+'</span><b style="color:'+c.c+';">$'+fmtM(c.v)+'</b></div><div class="prog" style="height:6px;"><div class="prog-fill" style="width:'+pct+'%;background:'+c.c+';"></div></div></div>';}).join('')
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;">'
+    +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Flujo Neto</div>'
+    +'<div style="font-size:28px;font-weight:900;color:'+nc+';">'+( netFlow>=0?'+':'')+fmtM(netFlow)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:4px;">Ingresos - Egresos</div>'
+    +'<div class="badge '+(netFlow>=0?'b-ok':'b-crit')+'" style="margin-top:8px;">'+(netFlow>=0?'✅ Flujo Positivo':'⚠️ Déficit')+'</div>'
+    +'</div></div>';
+
+  // Condo health
+  var pagados=FACTURACION.filter(function(f){return f.estado_pago==='Pagado';}).length;
+  var total=FACTURACION.length;var chi=Math.round(pagados/total*100);var cc=chi>=80?'#00d44c':chi>=60?'#ffab00':'#ff5252';
+  var assetsAlert=ASSETS.filter(function(a){return a.alerta_activa;}).length;
+  document.getElementById('dash-condo-health').innerHTML='<div style="text-align:center;padding:8px 0;">'
+    +'<div style="font-size:36px;font-weight:900;color:'+cc+';">'+chi+'%</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:2px;">Índice Cobros</div>'
+    +'<div class="prog" style="margin:8px 0;height:8px;"><div class="prog-fill" style="width:'+chi+'%;background:'+cc+';"></div></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;font-size:10px;">'
+    +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:6px;"><div style="color:var(--muted);">Pagados</div><b style="color:#00d44c;">'+pagados+'</b></div>'
+    +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:6px;"><div style="color:var(--muted);">Pendientes</div><b style="color:#ffab00;">'+(total-pagados)+'</b></div>'
+    +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:6px;"><div style="color:var(--muted);">Alertas HW</div><b style="color:'+(assetsAlert>0?'#ff5252':'#00d44c')+';">'+assetsAlert+'</b></div>'
+    +'</div></div>';
+
+  // RFQs widget
+  document.getElementById('dash-rfqs').innerHTML=RFQS.slice(0,4).map(function(r){
+    var c=r.estado==='Adjudicado'?'#00d44c':r.estado==='Publicado'?'#00bcd4':r.estado==='Urgente'?'#ff5252':'#4a6a8a';
+    var pc=r.prioridad==='Urgente'?'#ff5252':r.prioridad==='Alta'?'#ffab00':'#4a6a8a';
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--border2);">'
+      +'<div style="font-size:11px;font-weight:700;color:#e8f4fa;">'+r.codigo+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);">'+r.descripcion.substring(0,40)+'</div>'
+      +'<div style="display:flex;gap:5px;margin-top:3px;">'
+      +'<span class="badge" style="font-size:8px;color:'+c+';background:'+c+'12;border:1px solid '+c+'25;">'+r.estado+'</span>'
+      +'<span class="badge" style="font-size:8px;color:'+pc+';background:'+pc+'12;border:1px solid '+pc+'25;">'+r.prioridad+'</span>'
+      +'</div></div>';
+  }).join('');
+
+  // Tickets widget
+  document.getElementById('dash-tickets-widget').innerHTML=TICKETS.slice(0,4).map(function(t){
+    var c=t.estado==='Abierto'?'#ff5252':t.estado==='EnProceso'?'#ffab00':'#00d44c';
+    var pc=t.prioridad==='Urgente'?'#ff5252':t.prioridad==='Alta'?'#ffab00':'#4a6a8a';
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;">'
+      +'<div><div style="font-size:11px;color:#e8f4fa;">'+t.titulo.substring(0,35)+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);">'+t.tipo+' · '+t.agente_ia+'</div></div>'
+      +'<span class="badge" style="font-size:8px;color:'+c+';background:'+c+'12;border:1px solid '+c+'25;">'+t.estado+'</span>'
+      +'</div>';
+  }).join('');
+
+  // Wallets widget
+  document.getElementById('dash-wallets-widget').innerHTML=WALLETS.slice(0,5).map(function(w){
+    var c=w.tipo==='Escrow'?'#00bcd4':w.tipo==='Operativa'?'#00d44c':w.tipo==='Socio'?'#7c4dff':w.tipo==='Reserva'?'#448aff':'#4a6a8a';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border2);">'
+      +'<div><div style="font-size:11px;color:#e8f4fa;">'+w.nombre.substring(0,28)+'</div>'
+      +'<span style="font-size:8px;color:'+c+';">'+w.tipo+'</span></div>'
+      +'<div style="text-align:right;"><div class="mono" style="font-size:11px;font-weight:700;color:'+c+';">$'+fmtM(w.balance_usd)+'</div>'
+      +(w.balance_tokens>0?'<div style="font-size:9px;color:#7c4dff;">'+w.balance_tokens.toFixed(1)+' tokens</div>':'')+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ══ UNIDADES ══
+function loadUnidades(){
+  var TYPE_COLOR={Invernadero:'#00bcd4',CasaMalla:'#00d44c',CampoAbierto:'#ffab00',AreaComun:'#4a6a8a'};
+  document.getElementById('unidades-grid').innerHTML=UNITS.map(function(u){
+    var c=TYPE_COLOR[u.tipo]||'#4a6a8a';
+    var alicTotal=(u.alicuota_fija||0)+(u.consumo_agua_m3||0)*0.8+(u.consumo_kwh||0)*0.08;
+    return '<div class="card fade-in" style="border-top:3px solid '+c+';">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">'
+      +'<div><div style="font-size:14px;font-weight:900;color:#e8f4fa;">'+u.codigo+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);">'+u.nombre+'</div></div>'
+      +'<span class="badge" style="font-size:8px;color:'+c+';background:'+c+'15;border:1px solid '+c+'30;">'+u.tipo+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#c8d8ea;margin-bottom:8px;">👤 '+(u.socio_nombre||'—')+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px;margin-bottom:8px;">'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:5px;text-align:center;"><div style="color:var(--muted);">Área</div><b>'+fmtN(u.area_m2||0)+'m²</b></div>'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:5px;text-align:center;"><div style="color:var(--muted);">Agua</div><b style="color:#00bcd4;">'+(u.consumo_agua_m3||0)+'m³</b></div>'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:5px;text-align:center;"><div style="color:var(--muted);">kWh</div><b style="color:#ffab00;">'+(u.consumo_kwh||0)+'</b></div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+      +'<div style="font-size:10px;color:var(--muted);">Alícuota estimada:</div>'
+      +'<div class="mono" style="font-size:13px;font-weight:700;color:'+c+';">$'+fmtM(alicTotal)+'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('nav-und-lbl').textContent='Unidades ('+UNITS.length+')';
+}
+
+// ══ ALÍCUOTAS ══
+function loadAlicuotas(){
+  var mes=v('alic-mes')||'2026-04';
+  var facs=FACTURACION.filter(function(f){return f.mes_fiscal===mes;});
+  var pagados=facs.filter(function(f){return f.estado_pago==='Pagado';});
+  var pendientes=facs.filter(function(f){return f.estado_pago==='Pendiente';});
+  var vencidos=facs.filter(function(f){return f.estado_pago==='Vencido';});
+  var totalCobrar=facs.reduce(function(a,f){return a+f.monto_total;},0);
+  var totalCobrado=pagados.reduce(function(a,f){return a+f.monto_total;},0);
+  document.getElementById('alic-summary').innerHTML=[
+    {l:'Total a Cobrar',v:'$'+fmtM(totalCobrar),c:'#00bcd4'},
+    {l:'Cobrado',v:'$'+fmtM(totalCobrado),c:'#00d44c'},
+    {l:'Pendiente',v:pendientes.length+' socios',c:'#ffab00'},
+    {l:'Vencido',v:vencidos.length+' socios',c:'#ff5252'}
+  ].map(function(k){return '<div class="card" style="text-align:center;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;">'+k.l+'</div><div class="mono" style="font-size:16px;font-weight:700;color:'+k.c+';">'+k.v+'</div></div>';}).join('');
+  document.getElementById('alicuotas-tbody').innerHTML=facs.map(function(f){
+    var c=f.estado_pago==='Pagado'?'b-ok':f.estado_pago==='Vencido'?'b-crit':'b-warn';
+    var u=UNITS.find(function(x){return x.unit_id===f.unit_id;})||{};
+    return '<tr>'
+      +'<td><span class="mono" style="color:#00bcd4;font-size:11px;font-weight:700;">'+(u.codigo||'—')+'</span></td>'
+      +'<td style="font-size:11px;color:#e8f4fa;">'+f.socio_nombre+'</td>'
+      +'<td class="mono" style="color:#c8d8ea;">$'+fmtM(f.monto_fijo)+'</td>'
+      +'<td class="mono" style="color:#00bcd4;">$'+fmtM(f.monto_agua)+'</td>'
+      +'<td class="mono" style="color:#ffab00;">$'+fmtM(f.monto_energia)+'</td>'
+      +'<td class="mono" style="color:#00d44c;">$'+fmtM(f.monto_fertisal)+'</td>'
+      +'<td class="mono" style="font-weight:700;color:#e8f4fa;">$'+fmtM(f.monto_total)+'</td>'
+      +'<td><span class="badge '+c+'">'+f.estado_pago+'</span></td>'
+      +'<td><div style="display:flex;gap:4px;">'
+      +(f.estado_pago!=='Pagado'?'<button class="btn btn-g btn-sm" onclick="pagarAlicuota(\''+f.unit_id+'\')">💳 Pagar</button>':'<button class="btn btn-o btn-sm" onclick="">📄 PDF</button>')
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function generarAlicuotas(){
+  toast('⚡ Akasha generando alícuotas del próximo mes con datos IoT...'); setTimeout(function(){toast('✅ 6 alícuotas generadas para Mayo 2026');},1800);
+}
+async function pagarAlicuota(unitId){
+  var f=FACTURACION.find(function(x){return x.unit_id===unitId;});if(!f)return;
+  f.estado_pago='Pagado';
+  await dbQ(function(d){return d.from('condo_facturacion').update({estado_pago:'Pagado',fecha_pago:new Date().toISOString().split('T')[0]}).eq('unit_id',unitId).eq('mes_fiscal',f.mes_fiscal);});
+  toast('✅ Alícuota registrada como pagada para '+(f.socio_nombre||'—'));
+  loadAlicuotas();
+}
+
+// ══ TICKETS ══
+function loadTickets(){
+  var open=TICKETS.filter(function(t){return t.estado==='Abierto'||t.estado==='EnProceso';}).length;
+  document.getElementById('nav-tkt-lbl').textContent='Tickets ('+open+' open)';
+  document.getElementById('tickets-list').innerHTML=TICKETS.map(function(t){
+    var c=t.estado==='Abierto'?'#ff5252':t.estado==='EnProceso'?'#ffab00':t.estado==='Resuelto'?'#00d44c':'#4a6a8a';
+    var pc=t.prioridad==='Urgente'?'#ff5252':t.prioridad==='Alta'?'#ffab00':'#4a6a8a';
+    return '<div class="card fade-in" style="margin-bottom:10px;border-left:3px solid '+c+';">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">'
+      +'<div><span class="mono" style="color:#00bcd4;font-size:10px;font-weight:700;">'+t.codigo+'</span>'
+      +'<div style="font-size:13px;font-weight:800;color:#e8f4fa;margin-top:2px;">'+t.titulo+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:2px;">'+t.tipo+' · Reportado por: '+(t.reportado_por||'—')+' · Agente: '+t.agente_ia+'</div></div>'
+      +'<div style="display:flex;gap:5px;align-items:flex-start;">'
+      +'<span class="badge" style="font-size:9px;color:'+pc+';background:'+pc+'12;border:1px solid '+pc+'25;">'+t.prioridad+'</span>'
+      +'<span class="badge" style="font-size:9px;color:'+c+';background:'+c+'12;border:1px solid '+c+'25;">'+t.estado+'</span>'
+      +'</div></div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+      +'<div style="font-size:11px;color:var(--muted);">💰 Costo estimado: <b style="color:#e8f4fa;">$'+(t.costo_estimado||0)+'</b></div>'
+      +'<div style="display:flex;gap:6px;">'
+      +(t.estado!=='Resuelto'?'<button class="btn btn-g btn-sm" onclick="resolverTicket(\''+t.ticket_id+'\')">✅ Resolver</button>':'')
+      +'<button class="btn btn-o btn-sm">📋 Ver detalle</button>'
+      +'</div></div></div>';
+  }).join('');
+}
+
+async function resolverTicket(id){
+  var t=TICKETS.find(function(x){return x.ticket_id===id;});if(!t)return;
+  t.estado='Resuelto';
+  await dbQ(function(d){return d.from('condo_tickets').update({estado:'Resuelto',fecha_resolucion:new Date().toISOString()}).eq('ticket_id',id);});
+  toast('✅ Ticket '+t.codigo+' resuelto por '+( me&&me.nombre||'Admin'));
+  loadTickets();
+}
+
+// ══ ASSETS ══
+function loadAssets(){
+  var TIPO_ICON={Bomba:'💧',CCTV:'📷',Red:'⚡',Camino:'🛣️',Refrigeración:'❄️',default:'⚙️'};
+  document.getElementById('assets-grid').innerHTML=ASSETS.map(function(a){
+    var c=a.estado==='Operativo'?'#00d44c':a.estado==='Alerta'?'#ff5252':a.estado==='Parcial'?'#ffab00':'#4a6a8a';
+    var icon=TIPO_ICON[a.tipo]||TIPO_ICON.default;
+    return '<div class="card" style="border-left:3px solid '+c+';">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+      +'<span style="font-size:22px;">'+icon+'</span>'
+      +(a.alerta_activa?'<span class="badge b-crit" style="font-size:8px;animation:pulse .8s infinite;">⚠️ ALERTA</span>':'<span class="badge b-ok" style="font-size:8px;">OK</span>')
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:800;color:#e8f4fa;margin-bottom:3px;">'+a.nombre+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:8px;">Resp: '+(a.responsable||'—')+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;">'
+      +'<span class="badge" style="font-size:8px;color:'+c+';background:'+c+'12;border:1px solid '+c+'25;">'+a.estado+'</span>'
+      +'<span style="color:var(--muted);">Mant: '+(a.proximo_mantenimiento||'—')+'</span>'
+      +'</div>'
+      +(a.alerta_activa?'<button class="btn btn-r btn-sm" style="width:100%;margin-top:8px;" onclick="crearTicketDesdeAsset(\''+a.nombre+'\')">🔧 Crear Ticket</button>':'')
+      +'</div>';
+  }).join('');
+}
+
+function crearTicketDesdeAsset(nombre){
+  var nuevo={ticket_id:'tkt-new-'+Date.now(),codigo:'TKT-2026-00'+(TICKETS.length+5),titulo:'Revisión urgente: '+nombre,tipo:'Mantenimiento',prioridad:'Alta',estado:'Abierto',reportado_por:'Sistema IoT',agente_ia:'Vulcano',costo_estimado:0,created_at:new Date().toISOString()};
+  TICKETS.unshift(nuevo);
+  dbQ(function(d){return d.from('condo_tickets').insert({codigo:nuevo.codigo,titulo:nuevo.titulo,tipo:'Mantenimiento',prioridad:'Alta',estado:'Abierto',reportado_por:'Sistema IoT',agente_ia:'Vulcano',tenant_id:'hidroexpo'});});
+  toast('🔧 Ticket '+nuevo.codigo+' creado por Vulcano');
+}
+
+// ══ RFQ ══
+function loadRFQ(){
+  var vendorMap={};VENDORS.forEach(function(v){vendorMap[v.vendor_id]=v.nombre;});
+  document.getElementById('nav-rfq-lbl').textContent='RFQs ('+RFQS.length+')';
+  document.getElementById('rfq-tbody').innerHTML=RFQS.map(function(r){
+    var c=r.estado==='Adjudicado'?'b-ok':r.estado==='Publicado'?'b-blue':r.estado==='Borrador'?'b-gray':'b-crit';
+    var pc=r.prioridad==='Urgente'?'b-crit':r.prioridad==='Alta'?'b-warn':'b-gray';
+    var u=UNITS.find(function(x){return x.unit_id===r.up_id;})||{};
+    var tc=r.trigger_tipo==='Akasha'?'#7c4dff':r.trigger_tipo==='MRP_Auto'?'#00bcd4':'#4a6a8a';
+    return '<tr>'
+      +'<td><span class="mono" style="color:#00bcd4;font-size:10px;">'+r.codigo+'</span></td>'
+      +'<td><div style="font-size:11px;font-weight:700;color:#e8f4fa;">'+r.descripcion+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);">'+r.categoria+' · '+(r.cantidad||'—')+' '+( r.unidad||'')+'</div></td>'
+      +'<td style="font-size:10px;color:#00bcd4;">'+(u.codigo||'Global')+'</td>'
+      +'<td class="mono" style="color:#ffab00;">$'+fmtM(r.presupuesto_max||0)+'</td>'
+      +'<td style="font-size:10px;color:var(--muted);">'+(r.fecha_requerida||'—')+'</td>'
+      +'<td><span class="badge '+pc+'" style="font-size:8px;">'+r.prioridad+'</span></td>'
+      +'<td><span style="font-size:9px;padding:2px 6px;border-radius:10px;background:'+tc+'18;color:'+tc+';">'+r.trigger_tipo+'</span></td>'
+      +'<td><span class="badge '+c+'" style="font-size:9px;">'+r.estado+'</span></td>'
+      +'<td style="font-size:10px;color:#00d44c;">'+(r.vendor_ganador?vendorMap[r.vendor_ganador]||r.vendor_ganador:'—')+'<br>'+(r.precio_adjudicado?'<span class="mono" style="color:#00d44c;">$'+fmtM(r.precio_adjudicado)+'</span>':'')+'</td>'
+      +'<td><div style="display:flex;gap:3px;">'
+      +(r.estado==='Borrador'||r.estado==='Publicado'?'<button class="btn btn-t btn-sm" onclick="adjudicarRFQ(\''+r.rfq_id+'\')" style="font-size:9px;padding:3px 7px;">⚡ Adjudicar</button>':'')
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+async function adjudicarRFQ(rfqId){
+  var r=RFQS.find(function(x){return x.rfq_id===rfqId;});if(!r)return;
+  var best=VENDORS.filter(function(v){return v.estado==='Activo';}).sort(function(a,b){return (b.score_otif+b.score_calidad)-(a.score_otif+a.score_calidad);})[0];
+  if(!best)return;
+  r.estado='Adjudicado'; r.vendor_ganador=best.vendor_id; r.precio_adjudicado=r.presupuesto_max*0.93;
+  await dbQ(function(d){return d.from('procurement_rfq').update({estado:'Adjudicado',vendor_ganador:best.vendor_id,precio_adjudicado:r.precio_adjudicado,updated_at:new Date().toISOString()}).eq('rfq_id',rfqId);});
+  toast('🤖 Hermes adjudicó '+r.codigo+' a '+best.nombre+' ($'+fmtM(r.precio_adjudicado)+') — Ahorro: '+Math.round((1-0.93)*100)+'%');
+  loadRFQ();
+}
+
+// ══ VENDORS ══
+function loadVendors(){
+  var CAT_COLOR={Insumos:'#00d44c',Logistica:'#00bcd4',Servicios:'#448aff',Construccion:'#ffab00',TI:'#7c4dff'};
+  document.getElementById('vendors-grid').innerHTML=VENDORS.map(function(v){
+    var c=CAT_COLOR[v.categoria]||'#4a6a8a';
+    var sc=v.score_calidad>=9?'#00d44c':v.score_calidad>=8?'#ffab00':'#ff5252';
+    var otc=v.score_otif>=97?'#00d44c':v.score_otif>=93?'#ffab00':'#ff5252';
+    return '<div class="card" style="border-top:3px solid '+c+';">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+      +'<div><span class="mono" style="font-size:10px;color:'+c+';">'+v.codigo+'</span></div>'
+      +'<span class="badge '+(v.estado==='Activo'?'b-ok':v.estado==='Suspendido'?'b-warn':'b-crit')+'" style="font-size:8px;">'+v.estado+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:800;color:#e8f4fa;margin-bottom:4px;">'+v.nombre+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:8px;">'+v.categoria+' · '+v.dias_credito+' días crédito</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:10px;">'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:5px;text-align:center;"><div style="color:var(--muted);">Score Calidad</div><b style="color:'+sc+';">'+v.score_calidad+'/10</b></div>'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:5px;padding:5px;text-align:center;"><div style="color:var(--muted);">OTIF</div><b style="color:'+otc+';">'+v.score_otif+'%</b></div>'
+      +'</div>'
+      +((v.certificaciones&&v.certificaciones.length)?'<div style="display:flex;flex-wrap:wrap;gap:3px;">'
+        +v.certificaciones.map(function(cert){return '<span style="font-size:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:2px 6px;color:var(--muted);">'+cert+'</span>';}).join('')+'</div>':'')
+      +'</div>';
+  }).join('');
+}
+
+// ══ TESORERÍA ══
+function loadTreasury(){
+  var ingresos=TREASURY.filter(function(t){return t.tipo==='Ingreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var egresos=TREASURY.filter(function(t){return t.tipo==='Egreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var prov=TREASURY.filter(function(t){return t.tipo==='Provision';}).reduce(function(a,t){return a+t.monto;},0);
+  document.getElementById('treasury-summary').innerHTML=[
+    {l:'Total Ingresos',v:'$'+fmtM(ingresos),c:'#00d44c'},
+    {l:'Total Egresos',v:'$'+fmtM(egresos),c:'#ff5252'},
+    {l:'Flujo Neto',v:(ingresos-egresos>=0?'+':'')+fmtM(ingresos-egresos),c:ingresos-egresos>=0?'#00d44c':'#ff5252'},
+    {l:'Provisiones',v:'$'+fmtM(prov),c:'#7c4dff'}
+  ].map(function(k){return '<div class="card" style="text-align:center;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;">'+k.l+'</div><div class="mono" style="font-size:15px;font-weight:700;color:'+k.c+';">'+k.v+'</div></div>';}).join('');
+  var unitMap={};UNITS.forEach(function(u){unitMap[u.unit_id]=u.codigo;});
+  document.getElementById('treasury-tbody').innerHTML=TREASURY.map(function(t){
+    var tc=t.tipo==='Ingreso'?'#00d44c':t.tipo==='Egreso'?'#ff5252':'#7c4dff';
+    var sc=t.estado==='Ejecutado'?'b-ok':t.estado==='Pendiente'?'b-warn':'b-gray';
+    return '<tr>'
+      +'<td class="mono" style="font-size:10px;color:var(--muted);">'+(t.fecha_tx||t.fecha_valor||'—').toString().substring(0,10)+'</td>'
+      +'<td><span class="badge" style="font-size:9px;color:'+tc+';background:'+tc+'12;border:1px solid '+tc+'25;">'+t.tipo+'</span></td>'
+      +'<td style="font-size:10px;color:var(--muted);">'+(t.categoria||'—')+'</td>'
+      +'<td style="font-size:11px;color:#e8f4fa;">'+t.descripcion+'</td>'
+      +'<td class="mono" style="font-weight:700;color:'+tc+';">'+(t.tipo==='Egreso'?'-':'+')+'$'+fmtM(t.monto)+'</td>'
+      +'<td style="font-size:10px;color:#00bcd4;">'+(t.up_id?unitMap[t.up_id]||'—':'Global')+'</td>'
+      +'<td><span class="badge '+sc+'" style="font-size:8px;">'+t.estado+'</span></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ══ WALLETS FIIA ══
+function loadWallets(){
+  var TYPE_COLORS={Escrow:'#00bcd4',Operativa:'#00d44c',Reserva:'#448aff',Socio:'#7c4dff',Proveedor:'#4a6a8a'};
+  document.getElementById('wallets-grid').innerHTML=WALLETS.map(function(w){
+    var c=TYPE_COLORS[w.tipo]||'#4a6a8a';
+    return '<div class="wallet-card card fade-in" style="border:1px solid '+c+'30;background:linear-gradient(135deg,'+c+'08,transparent);">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">'
+      +'<div><span class="badge" style="font-size:8px;color:'+c+';background:'+c+'12;border:1px solid '+c+'25;">'+w.tipo+'</span>'
+      +(w.kyc_status==='Verificado'?'<span class="badge b-ok" style="font-size:8px;margin-left:4px;">✅ KYC</span>':'<span class="badge b-warn" style="font-size:8px;margin-left:4px;">⏳ KYC</span>')+'</div>'
+      +(w.auto_reinversion?'<span style="font-size:9px;color:#00d44c;background:rgba(0,212,76,.1);padding:2px 7px;border-radius:10px;">🔄 Auto</span>':'')
+      +'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:#e8f4fa;margin-bottom:6px;">'+w.nombre+'</div>'
+      +'<div class="mono" style="font-size:26px;font-weight:700;color:'+c+';margin-bottom:4px;">$'+fmtM(w.balance_usd)+'</div>'
+      +(w.balance_tokens>0?'<div style="font-size:11px;color:#7c4dff;">'+w.balance_tokens.toFixed(1)+' tokens FIIA</div>':'')
+      +'<div style="display:flex;gap:6px;margin-top:10px;">'
+      +'<button class="btn btn-t btn-sm" onclick="toast(\'💰 Transfiriendo desde '+w.nombre+'...\')">→ Transferir</button>'
+      +(w.tipo==='Socio'?'<button class="btn btn-o btn-sm" onclick="toast(\'🏦 Solicitud de retiro generada\')">🏦 Retirar</button>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+async function ejecutarTransferencia(){
+  var origen=v('tx-origen'),destino=v('tx-destino'),monto=parseFloat(v('tx-monto'));
+  if(!origen||!destino||!monto){toast('⚠ Completa todos los campos','#ff5252');return;}
+  if(origen===destino){toast('⚠ Origen y destino deben ser distintos','#ff5252');return;}
+  var wo=WALLETS.find(function(x){return x.wallet_id===origen;});
+  var wd=WALLETS.find(function(x){return x.wallet_id===destino;});
+  if(!wo||!wd){toast('Wallet no encontrada','#ff5252');return;}
+  if(wo.balance_usd<monto){toast('⚠ Saldo insuficiente: $'+fmtM(wo.balance_usd),'#ff5252');return;}
+  wo.balance_usd-=monto; wd.balance_usd+=monto;
+  var hash='0x'+Math.random().toString(16).slice(2,18).toUpperCase();
+  await dbQ(function(d){return d.from('fiia_ledger').insert({origen_wallet:origen,destino_wallet:destino,monto:monto,tipo_tx:'Transferencia',descripcion:'TX manual vía iFinanzas',hash_seguridad:hash,estado:'Confirmada',tenant_id:'hidroexpo'});});
+  await dbQ(function(d){return d.from('fiia_wallets').update({balance_usd:wo.balance_usd}).eq('wallet_id',origen);});
+  await dbQ(function(d){return d.from('fiia_wallets').update({balance_usd:wd.balance_usd}).eq('wallet_id',destino);});
+  toast('✅ TX $'+fmtM(monto)+' : '+wo.nombre+' → '+wd.nombre+' | Hash: '+hash.substring(0,14));
+  populateWalletSelects(); loadWallets();
+}
+
+// ══ SMART CONTRACTS ══
+function loadContratos(){
+  var contratos=[
+    {id:'SC-001',tipo:'Liquidación Socio',descripcion:'Dividendos Socio #777 — Lote Málaga Cycle 4',condicion:'Cert. Inocuidad ✅ + Pago Commercial Bridge ✅',monto_bloqueado:15400,wallet_destino:'Wallet Socio #777',estado:'READY_FOR_PAYOUT',trigger_pendiente:false},
+    {id:'SC-002',tipo:'Pago Logística',descripcion:'Transporte Refrigerado Acajutla — Contenedor #MSCU1234',condicion:'GPS Málaga ⏳ + Cadena Frío ✅',monto_bloqueado:3200,wallet_destino:'Wallet Fertisalca/Transporte',estado:'WAITING_GPS',trigger_pendiente:true},
+    {id:'SC-003',tipo:'Pago Proveedor',descripcion:'Fertisalca — OC RFQ-2026-0002',condicion:'GRNI escaneado ✅',monto_bloqueado:2980,wallet_destino:'Wallet Fertisalca',estado:'READY_FOR_PAYOUT',trigger_pendiente:false},
+    {id:'SC-004',tipo:'Alícuota Auto-débito',descripcion:'Socio #003 — Alícuota Abril 2026',condicion:'Fecha 30/04/2026 ⏳',monto_bloqueado:4184,wallet_destino:'Cuenta Operativa iAGRI',estado:'SCHEDULED',trigger_pendiente:true}
+  ];
+  document.getElementById('contratos-list').innerHTML=contratos.map(function(c){
+    var sc=c.estado==='READY_FOR_PAYOUT'?'#00d44c':c.estado==='WAITING_GPS'?'#ffab00':'#448aff';
+    var sts=c.estado==='READY_FOR_PAYOUT'?'✅ LISTO PARA EJECUTAR':c.estado==='WAITING_GPS'?'⏳ ESPERANDO CONFIRMACIÓN':'🗓️ PROGRAMADO';
+    return '<div class="card fade-in" style="margin-bottom:11px;border-left:3px solid '+sc+';">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">'
+      +'<div><span class="mono" style="font-size:10px;color:'+sc+';">'+c.id+'</span>'
+      +'<div style="font-size:13px;font-weight:800;color:#e8f4fa;margin-top:2px;">'+c.descripcion+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:2px;">Tipo: <b>'+c.tipo+'</b></div></div>'
+      +'<div style="text-align:right;">'
+      +'<div class="mono" style="font-size:18px;font-weight:700;color:'+sc+';">$'+fmtM(c.monto_bloqueado)+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);">Bloqueado en Escrow</div>'
+      +'</div></div>'
+      +'<div style="background:rgba(255,255,255,.03);border-radius:7px;padding:9px 12px;margin-bottom:10px;">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Condición de Activación (IF/THEN)</div>'
+      +'<div style="font-size:11px;color:#c8d8ea;">'+c.condicion+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'
+      +'<div style="font-size:10px;color:var(--muted);">Destino: <b style="color:'+sc+';">'+c.wallet_destino+'</b></div>'
+      +'<div style="display:flex;gap:7px;">'
+      +(c.estado==='READY_FOR_PAYOUT'?'<button class="btn btn-g btn-sm" onclick="ejecutarContrato(\''+c.id+'\',$'+c.monto_bloqueado+')">⚡ Ejecutar AHORA</button>':'')
+      +'<span style="font-size:9px;padding:3px 9px;border-radius:12px;background:'+sc+'15;color:'+sc+';border:1px solid '+sc+'30;font-weight:700;">'+sts+'</span>'
+      +'</div></div></div>';
+  }).join('');
+}
+
+function ejecutarContrato(id, monto){
+  toast('⚡ Smart Contract '+id+' ejecutado → '+monto+' transferidos. Hash blockchain generado.','#00d44c');
+  setTimeout(function(){toast('📲 Socio/Proveedor notificado vía App & WhatsApp');},2000);
+}
+
+// ══ AKASHA CFO ══
+function loadAkasha(){
+  var ingresos=TREASURY.filter(function(t){return t.tipo==='Ingreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var egresos=TREASURY.filter(function(t){return t.tipo==='Egreso';}).reduce(function(a,t){return a+t.monto;},0);
+  document.getElementById('akasha-finstate').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">'
+    +'<div><span style="color:var(--muted);">Ingresos Abr:</span><br><b class="mono" style="color:#00d44c;">$'+fmtM(ingresos)+'</b></div>'
+    +'<div><span style="color:var(--muted);">Egresos Abr:</span><br><b class="mono" style="color:#ff5252;">$'+fmtM(egresos)+'</b></div>'
+    +'<div><span style="color:var(--muted);">Flujo Neto:</span><br><b class="mono" style="color:#00bcd4;">$'+fmtM(ingresos-egresos)+'</b></div>'
+    +'<div><span style="color:var(--muted);">FIIA Saldo:</span><br><b class="mono" style="color:#7c4dff;">$'+fmtM(WALLETS.reduce(function(a,w){return a+w.balance_usd;},0))+'</b></div>'
+    +'</div>';
+  document.getElementById('akasha-whatif').innerHTML='<div style="display:flex;flex-direction:column;gap:8px;">'
+    +['¿Qué pasa si el flete sube 20%?','Proyectar flujo de caja 60 días','Calcular dividendos si cosecha baja 10%','¿Cuándo alcanzamos breakeven?','Simular alícuota con nuevo socio','Análisis DPO vs DSO actual'].map(function(s){
+      return '<button class="btn btn-o" style="text-align:left;font-size:11px;padding:7px 12px;" onclick="quickChat(\''+s+'\')">💬 '+s+'</button>';
+    }).join('')+'</div>';
+  // Initial chat message
+  var msgs=document.getElementById('chat-messages');
+  if(msgs&&msgs.children.length===0){
+    addChatMsg('¡Hola! Soy **Alejandría**, tu CFO y CSO con IA.\n\nGestiono las finanzas del ecosistema Hidroexpo. Puedo ayudarte con:\n• Análisis de flujo de caja y proyecciones\n• Estado de Smart Contracts y dividendos\n• Evaluación de proveedores y compras\n• Análisis de alícuotas y morosidad\n• Simulaciones "What-If" financieras\n\nEl flujo neto de Abril 2026 es **$'+(fmtM(ingresos-egresos))+'**. ¿En qué trabajamos hoy?','ai');
+  }
+  var _quickTopics=[{l:'💰 Flujo Caja',q:'Analiza el flujo de caja del mes actual'},{l:'📦 Compras',q:'Analiza las compras y RFQs pendientes'},{l:'🏗️ Condominio',q:'Analiza el estado del condominio y alícuotas'},{l:'💳 Dividendos',q:'Analiza los dividendos y smart contracts pendientes'},{l:'📊 KPIs',q:'Resume los KPIs financieros del mes'},{l:'⚠️ Alertas',q:'Dime las alertas de morosidad y proveedores'}];
+  document.getElementById('chat-quick').innerHTML=_quickTopics.map(function(t){return '<button class="btn btn-o btn-sm" onclick="quickChat(\''+t.q+'\')">'+t.l+'</button>';}).join('');
+}
+
+function quickChat(q){var inp=document.getElementById('chat-input');if(inp){inp.value=q;sendChat();}}
+
+async function sendChat(){
+  var input=document.getElementById('chat-input');var msg=input.value.trim();if(!msg)return;
+  input.value='';addChatMsg(msg,'user');
+  var btn=document.getElementById('chat-btn');if(btn){btn.disabled=true;btn.textContent='...';}
+  var ingresos=TREASURY.filter(function(t){return t.tipo==='Ingreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var egresos=TREASURY.filter(function(t){return t.tipo==='Egreso';}).reduce(function(a,t){return a+t.monto;},0);
+  var sys='Eres Alejandría, CFO/CSO de iAGRI Hidroexpo. Eres experta en finanzas agrícolas, smart contracts, gestión de condominios agrotech, compras B2B y liquidación de dividendos. Estado actual: Ingresos Abril $'+fmtM(ingresos)+', Egresos $'+fmtM(egresos)+', Flujo neto $'+fmtM(ingresos-egresos)+'. '+WALLETS.length+' wallets FIIA activas. '+RFQS.filter(function(r){return r.estado!=='Adjudicado';}).length+' RFQs pendientes. Responde en español, sé experta y concisa.';
+  try{
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:sys,messages:[{role:'user',content:msg}]})});
+    var d=await r.json();var reply=d.content&&d.content[0]&&d.content[0].text?d.content[0].text:'Sin respuesta';
+    addChatMsg(reply,'ai');
+  }catch(e){
+    var FALL={'flete':'🚢 **Impacto Flete +20%**\n\nContenedor Acajutla→Málaga actual: ~$3,200. Con +20%: ~$3,840/contenedor.\n\n**Impacto en margen**: -1.8% por ciclo de exportación\n\n**Alejandría recomienda**:\n1. Negociar contrato anual con Transporte Refrigerado Acajutla\n2. Evaluar cambio Incoterm CIF→EXW para transferir riesgo al comprador\n3. Activar cláusula de ajuste en contrato Málaga','flujo':'📊 **Proyección Flujo de Caja 60 días**\n\nMes 1 (Mayo):\n• Ingresos esperados: $52,000 (Málaga Lote 5)\n• Egresos operativos: ~$28,000\n• **Flujo estimado: +$24,000**\n\nMes 2 (Junio):\n• 3 ciclos de cosecha adicionales\n• Ingresos proyectados: $68,000\n• **Flujo estimado: +$35,000**\n\nReserva FIIA al D+60: ~$71,000','divi':'💼 **Dividendos con Cosecha -10%**\n\nBase: 42,000 kg × $1.85 = $77,700\nCon -10%: 37,800 kg × $1.85 = $69,930\n\n**Reducción dividendo Socio #777**: $15,400 → $13,860 (-$1,540)\n\nAlejandría activa: cláusula de rendimiento mínimo garantizado del 85% al socio.','default':'💡 **Análisis Alejandría — CFO iAGRI**\n\nBasado en los datos del mes:\n\n• **Flujo neto positivo**: $'+fmtM(ingresos-egresos)+'\n• **Alícuotas pendientes**: '+FACTURACION.filter(function(f){return f.estado_pago!=='Pagado';}).length+' socios\n• **RFQs para adjudicar**: '+RFQS.filter(function(r){return r.estado==='Publicado'||r.estado==='Borrador';}).length+'\n\n**Recomendación**: Ejecutar Smart Contract SC-001 ($15,400) para liquidar dividendos Socio #777 hoy.'};
+    var k=Object.keys(FALL).find(function(k){return msg.toLowerCase().includes(k);});
+    addChatMsg(FALL[k||'default'],'ai');
+  }
+  if(btn){btn.disabled=false;btn.textContent='→';}
+}
+
+function addChatMsg(text,type){
+  var msgs=document.getElementById('chat-messages');
+  var div=document.createElement('div');
+  div.style.cssText='padding:9px 13px;border-radius:11px;font-size:12px;line-height:1.65;max-width:86%;'+(type==='user'?'background:rgba(0,188,212,.1);border:1px solid rgba(0,188,212,.2);color:#c8d8ea;margin-left:auto;':'background:rgba(0,96,100,.15);border:1px solid rgba(0,188,212,.15);color:#c8d8ea;');
+  if(type==='ai')div.innerHTML='<div style="font-size:9px;color:var(--muted);margin-bottom:3px;">🧠 Alejandría — CFO</div>'+text.replace(/\*\*(.*?)\*\*/g,'<b style="color:#e8f4fa;">$1</b>').replace(/\n/g,'<br>');
+  else div.textContent=text;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ══ MODALS ══
+function showModalUnidad(){openModal('🏗️ Nueva Unidad','<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><label>Código *</label><input id="u-cod" placeholder="INV-36, CM-09..."></div><div><label>Tipo</label><select id="u-tipo"><option>Invernadero</option><option>CasaMalla</option><option>CampoAbierto</option><option>AreaComun</option></select></div><div><label>Nombre</label><input id="u-nom" placeholder="Invernadero Nave 36"></div><div><label>Socio / Propietario</label><input id="u-socio" placeholder="Nombre del socio"></div><div><label>Área m²</label><input id="u-area" type="number" placeholder="10000"></div><div><label>Alícuota Fija USD/mes</label><input id="u-alic" type="number" placeholder="850"></div></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-t" onclick="saveUnidad()">💾 Guardar</button><button class="btn btn-o" onclick="closeModal()">Cancelar</button></div>');}
+function showModalTicket(){openModal('🔧 Nuevo Ticket','<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div style="grid-column:span 2"><label>Título *</label><input id="tk-titulo" placeholder="Describe la incidencia..."></div><div><label>Tipo</label><select id="tk-tipo"><option>Mantenimiento</option><option>Infraestructura</option><option>Seguridad</option><option>Limpieza</option></select></div><div><label>Prioridad</label><select id="tk-prio"><option>Normal</option><option>Alta</option><option>Urgente</option></select></div><div><label>Reportado por</label><input id="tk-rep" placeholder="Nombre"></div><div><label>Costo Estimado $</label><input id="tk-costo" type="number" placeholder="0"></div></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-t" onclick="saveTicket()">💾 Crear Ticket</button><button class="btn btn-o" onclick="closeModal()">Cancelar</button></div>');}
+function showModalRFQ(){openModal('📦 Nueva RFQ','<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div style="grid-column:span 2"><label>Descripción *</label><input id="rfq-desc" placeholder="Insumo o servicio requerido..."></div><div><label>Categoría</label><select id="rfq-cat"><option>Insumos</option><option>Servicios</option><option>TI</option><option>Construccion</option><option>Logistica</option></select></div><div><label>Presupuesto Máx. $</label><input id="rfq-pmax" type="number" placeholder="0"></div><div><label>Fecha Requerida</label><input id="rfq-fecha" type="date"></div><div><label>Prioridad</label><select id="rfq-prio"><option>Normal</option><option>Alta</option><option>Urgente</option></select></div></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-g" onclick="saveRFQ()">⚡ Lanzar RFQ (Hermes)</button><button class="btn btn-o" onclick="closeModal()">Cancelar</button></div>');}
+function showModalVendor(){openModal('🤝 Nuevo Proveedor','<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><label>Nombre *</label><input id="vnd-nom" placeholder="Nombre empresa"></div><div><label>Categoría</label><select id="vnd-cat"><option>Insumos</option><option>Logistica</option><option>Servicios</option><option>Construccion</option><option>TI</option></select></div><div><label>RUC/NIT</label><input id="vnd-ruc" placeholder="0000-000000-000-0"></div><div><label>Días de Crédito</label><input id="vnd-dias" type="number" placeholder="30"></div><div><label>Contacto Email</label><input id="vnd-email" type="email" placeholder="proveedor@email.com"></div><div><label>Tel. Contacto</label><input id="vnd-tel" placeholder="+503 XXXX XXXX"></div></div><div style="display:flex;gap:8px;margin-top:14px;"><button class="btn btn-t" onclick="saveVendor()">💾 Registrar</button><button class="btn btn-o" onclick="closeModal()">Cancelar</button></div>');}
+
+async function saveUnidad(){var cod=v('u-cod');if(!cod){toast('⚠ Código requerido','#ff5252');return;}var d={codigo:cod,nombre:v('u-nom')||cod,tipo:v('u-tipo'),socio_nombre:v('u-socio'),area_m2:_n('u-area'),alicuota_fija:_n('u-alic'),estado:'Activo',tenant_id:'hidroexpo'};await dbQ(function(db){return db.from('condo_units').insert(d);});SIM_UNITS.push(Object.assign(d,{unit_id:'cu-'+Date.now()}));UNITS=SIM_UNITS.slice();closeModal();toast('✅ Unidad '+cod+' registrada');loadUnidades();}
+async function saveTicket(){var titulo=v('tk-titulo');if(!titulo){toast('⚠ Título requerido','#ff5252');return;}var cod='TKT-2026-00'+(TICKETS.length+10);var d={codigo:cod,titulo:titulo,tipo:v('tk-tipo'),prioridad:v('tk-prio'),estado:'Abierto',reportado_por:v('tk-rep')||me&&me.nombre||'Admin',agente_ia:'Vulcano',costo_estimado:_n('tk-costo'),tenant_id:'hidroexpo'};await dbQ(function(db){return db.from('condo_tickets').insert(d);});TICKETS.unshift(Object.assign(d,{ticket_id:'tkt-'+Date.now(),created_at:new Date().toISOString()}));closeModal();toast('🔧 Ticket '+cod+' creado y asignado a Vulcano');loadTickets();}
+async function saveRFQ(){var desc=v('rfq-desc');if(!desc){toast('⚠ Descripción requerida','#ff5252');return;}var cod='RFQ-2026-00'+(RFQS.length+10);var d={codigo:cod,descripcion:desc,categoria:v('rfq-cat'),presupuesto_max:_n('rfq-pmax'),fecha_requerida:v('rfq-fecha')||null,prioridad:v('rfq-prio'),estado:'Publicado',trigger_tipo:'Manual',tenant_id:'hidroexpo'};await dbQ(function(db){return db.from('procurement_rfq').insert(d);});RFQS.unshift(Object.assign(d,{rfq_id:'rfq-'+Date.now()}));closeModal();toast('⚡ Hermes lanzó RFQ '+cod+' a proveedores homologados');loadRFQ();}
+async function saveVendor(){var nom=v('vnd-nom');if(!nom){toast('⚠ Nombre requerido','#ff5252');return;}var cod='VND-'+String(VENDORS.length+10).padStart(3,'0');var d={codigo:cod,nombre:nom,categoria:v('vnd-cat'),ruc_nit:v('vnd-ruc'),dias_credito:_n('vnd-dias')||30,contacto_email:v('vnd-email'),contacto_tel:v('vnd-tel'),score_calidad:7.0,score_otif:95.0,estado:'Activo',tenant_id:'hidroexpo'};await dbQ(function(db){return db.from('admin_vendors').insert(d);});VENDORS.push(Object.assign(d,{vendor_id:'vnd-'+Date.now(),certificaciones:[]}));closeModal();toast('✅ Proveedor '+nom+' registrado y en proceso de homologación');loadVendors();}
+
+// ══ HELPERS ══
+function fmtM(n){if(!n&&n!==0)return '0';n=parseFloat(n);if(isNaN(n))return '0';if(Math.abs(n)>=1000000)return (n/1000000).toFixed(1)+'M';if(Math.abs(n)>=1000)return (n/1000).toFixed(1)+'K';return n.toFixed(0);}
+function fmtN(n){if(!n)return '0';return parseFloat(n).toLocaleString('es-SV');}
+</script>
+</body>
+</html>
