@@ -160,13 +160,33 @@ class CAIAHubSetup:
             stmts = [s.strip() for s in sql.split(';') if s.strip() and not s.strip().startswith("--")]
 
             self.log("INFO", f"Total statements: {len(stmts)}")
-            self.log("INFO", "⚠️ Note: Manual verification needed in Supabase SQL editor")
-            self.log("INFO", f"→ https://{self.project_id}.supabase.co/project/sql/new")
 
-            # Just read and validate for now
-            executed = len(stmts)
+            # If a direct Postgres connection string is available, execute the
+            # full SQL file. Otherwise just validate and point to the SQL editor.
+            db_url = os.getenv("SUPABASE_CAIA_HUB_DB_URL") or os.getenv("SUPABASE_DB_URL")
+            if not db_url:
+                self.log("WARNING", "No SUPABASE_DB_URL set; skipping execution.")
+                self.log("INFO", "⚠️ Apply manually in Supabase SQL editor:")
+                self.log("INFO", f"→ https://{self.project_id}.supabase.co/project/sql/new")
+                self.log("SUCCESS", f"✅ Schema validated ({len(stmts)} statements)")
+                self.step_done(3)
+                return True
 
-            self.log("SUCCESS", f"✅ Schema validated ({executed} statements)")
+            try:
+                import psycopg2
+            except ImportError:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+                import psycopg2
+
+            conn = psycopg2.connect(db_url)
+            try:
+                conn.autocommit = True
+                with conn.cursor() as cur:
+                    cur.execute(sql)
+                self.log("SUCCESS", f"✅ Schema applied ({len(stmts)} statements)")
+            finally:
+                conn.close()
+
             self.step_done(3)
             return True
 
@@ -191,6 +211,10 @@ class CAIAHubSetup:
                 ("esa_cci_ftp_pass", "ESA_CCI_FTP_PASS", "ESA"),
             ]
 
+            if not self.supabase:
+                self.log("ERROR", "No Supabase client (step 2 failed). Skipping secrets.")
+                return False
+
             populated = 0
             for key_name, env_var, category in secrets:
                 value = os.getenv(env_var)
@@ -198,10 +222,22 @@ class CAIAHubSetup:
                     self.log("WARNING", f"  ⚠️ {key_name}: NO VALUE")
                     continue
 
-                self.log("INFO", f"  ✓ {key_name} [{category}]")
-                populated += 1
+                try:
+                    self.supabase.table("secrets_api_keys").upsert(
+                        {
+                            "key_name": key_name,
+                            "key_value": value,
+                            "category": category,
+                            "updated_at": datetime.now().isoformat(),
+                        },
+                        on_conflict="key_name",
+                    ).execute()
+                    self.log("INFO", f"  ✓ {key_name} [{category}]")
+                    populated += 1
+                except Exception as e:
+                    self.log("ERROR", f"  ❌ {key_name}: {str(e)}")
 
-            self.log("SUCCESS", f"✅ {populated}/9 secrets configured")
+            self.log("SUCCESS", f"✅ {populated}/{len(secrets)} secrets configured")
             self.step_done(4)
             return populated > 0
 
@@ -268,8 +304,37 @@ class CAIAHubSetup:
                 ("WY", "Wyoming", -111.1, -104.0, 41.0, 45.0, "West", -107.6, 43.0),
             ]
 
+            if not self.supabase:
+                self.log("ERROR", "No Supabase client (step 2 failed). Skipping states.")
+                return False
+
             self.log("INFO", f"Initializing {len(states)} states...")
-            self.log("SUCCESS", f"✅ {len(states)} states ready")
+
+            rows = [
+                {
+                    "state_code": code,
+                    "state_name": name,
+                    "lon_min": lon_min,
+                    "lon_max": lon_max,
+                    "lat_min": lat_min,
+                    "lat_max": lat_max,
+                    "region": region,
+                    "centroid_lon": centroid_lon,
+                    "centroid_lat": centroid_lat,
+                }
+                for (code, name, lon_min, lon_max, lat_min, lat_max,
+                     region, centroid_lon, centroid_lat) in states
+            ]
+
+            try:
+                self.supabase.table("clima_usa_states").upsert(
+                    rows, on_conflict="state_code"
+                ).execute()
+                self.log("SUCCESS", f"✅ {len(rows)} states upserted")
+            except Exception as e:
+                self.log("ERROR", f"Upsert failed: {str(e)}")
+                return False
+
             self.step_done(5)
             return True
 
@@ -309,24 +374,52 @@ class CAIAHubSetup:
         """PASO 7: Test connectivity"""
         self.step(7, "Test connectivity to CAIA-Hub and RPCs")
 
-        try:
-            tests = [
-                "clima_usa_states table ready",
-                "fn_caia_get_secret RPC ready",
-                "secrets_api_keys table ready",
-            ]
-
-            passed = len(tests)
-            for test in tests:
-                self.log("INFO", f"  ✓ {test}")
-
-            self.log("SUCCESS", f"✅ {passed}/{len(tests)} tests passed")
-            self.step_done(7)
-            return True
-
-        except Exception as e:
-            self.log("ERROR", f"Test error: {str(e)}")
+        if not self.supabase:
+            self.log("ERROR", "No Supabase client (step 2 failed). Skipping tests.")
             return False
+
+        passed = 0
+        total = 0
+
+        # Test 1: clima_usa_states table reachable
+        total += 1
+        try:
+            res = self.supabase.table("clima_usa_states").select(
+                "state_code", count="exact"
+            ).limit(1).execute()
+            count = getattr(res, "count", None)
+            self.log("INFO", f"  ✓ clima_usa_states reachable (rows: {count})")
+            passed += 1
+        except Exception as e:
+            self.log("ERROR", f"  ❌ clima_usa_states: {str(e)}")
+
+        # Test 2: secrets_api_keys table reachable
+        total += 1
+        try:
+            res = self.supabase.table("secrets_api_keys").select(
+                "key_name", count="exact"
+            ).limit(1).execute()
+            count = getattr(res, "count", None)
+            self.log("INFO", f"  ✓ secrets_api_keys reachable (rows: {count})")
+            passed += 1
+        except Exception as e:
+            self.log("ERROR", f"  ❌ secrets_api_keys: {str(e)}")
+
+        # Test 3: fn_caia_get_secret RPC
+        total += 1
+        try:
+            self.supabase.rpc(
+                "fn_caia_get_secret", {"p_key_name": "nasa_earthdata_username"}
+            ).execute()
+            self.log("INFO", "  ✓ fn_caia_get_secret RPC ready")
+            passed += 1
+        except Exception as e:
+            self.log("WARNING", f"  ⚠️ fn_caia_get_secret RPC: {str(e)}")
+
+        self.log("SUCCESS", f"✅ {passed}/{total} tests passed")
+        if passed > 0:
+            self.step_done(7)
+        return passed == total
 
     def generate_report(self):
         """PASO 8: Generate report"""
