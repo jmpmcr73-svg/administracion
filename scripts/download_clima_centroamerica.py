@@ -93,6 +93,23 @@ import cdsapi
 import xarray as xr
 import numpy as np
 
+import math
+
+
+def _n(v):
+    """NaN/inf -> None (JSON no acepta NaN; Supabase lo rechaza)."""
+    if v is None:
+        return None
+    try:
+        return None if (math.isnan(v) or math.isinf(v)) else v
+    except TypeError:
+        return v
+
+
+def _round(v, nd=2):
+    return None if v is None else round(v, nd)
+
+
 ENV_FILE = os.path.expanduser("~/.env.caia-hub")
 ERA5_DATASET = "reanalysis-era5-single-levels-monthly-means"
 # Bounding box Centroamérica completa: N, W, S, E
@@ -204,22 +221,24 @@ def process_year(ds, year, zonas, enso):
             continue
         for i, tval in enumerate(times):
             mes = int(str(tval)[5:7])
-            t_c = float(st.isel({time_n: i}).mean().values) - 273.15
-            d_c = float(sd.isel({time_n: i}).mean().values) - 273.15
+            # nanmean/min/max ignoran celdas NaN (p.ej. mar); _n() limpia el resto
+            t_c = _n(float(np.nanmean(st.isel({time_n: i}).values)) - 273.15)
+            d_c = _n(float(np.nanmean(sd.isel({time_n: i}).values)) - 273.15)
             dias = calendar.monthrange(year, mes)[1]
             if sp is not None:
-                p_mm = round(float(sp.isel({time_n: i}).mean().values) * 1000.0 * dias, 2)
+                p_mm = _n(float(np.nanmean(sp.isel({time_n: i}).values)) * 1000.0 * dias)
             else:
                 p_mm = None
+            rh = _n(dewpoint_to_rh(t_c, d_c)) if (t_c is not None and d_c is not None) else None
             fase, oni = enso_for(enso, year, mes)
             rows.append({
                 "zona_code": z["zona_code"],
                 "anio": year, "mes": mes,
-                "temp_media_c": round(t_c, 2),
-                "temp_min_c": round(float(st.isel({time_n: i}).min().values) - 273.15, 2),
-                "temp_max_c": round(float(st.isel({time_n: i}).max().values) - 273.15, 2),
-                "precip_total_mm": p_mm,
-                "humedad_rel_pct": round(dewpoint_to_rh(t_c, d_c), 1),
+                "temp_media_c": _round(t_c),
+                "temp_min_c": _round(_n(float(np.nanmin(st.isel({time_n: i}).values)) - 273.15)),
+                "temp_max_c": _round(_n(float(np.nanmax(st.isel({time_n: i}).values)) - 273.15)),
+                "precip_total_mm": _round(p_mm),
+                "humedad_rel_pct": _round(rh, 1),
                 "enso_fase": fase, "enso_oni": oni,
                 "fuente": "Copernicus ERA5",
                 "updated_at": datetime.now().isoformat(),
