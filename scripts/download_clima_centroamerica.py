@@ -94,6 +94,8 @@ import xarray as xr
 import numpy as np
 
 import math
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)  # nanmean de slices vacíos
 
 
 def _n(v):
@@ -167,6 +169,12 @@ def enso_for(enso, anio, mes):
 
 
 def upsert(sb, table, rows, on_conflict):
+    # dedup intra-lote por la clave de conflicto (evita error 21000)
+    keys = [k.strip() for k in on_conflict.split(",")]
+    seen = {}
+    for r in rows:
+        seen[tuple(r.get(k) for k in keys)] = r
+    rows = list(seen.values())
     for i in range(0, len(rows), 500):
         sb.table(table).upsert(rows[i:i+500], on_conflict=on_conflict).execute()
 
@@ -229,6 +237,9 @@ def process_year(ds, year, zonas, enso):
                 p_mm = _n(float(np.nanmean(sp.isel({time_n: i}).values)) * 1000.0 * dias)
             else:
                 p_mm = None
+            # si la zona no tiene celdas terrestres (todo NaN), saltar el mes
+            if t_c is None:
+                continue
             rh = _n(dewpoint_to_rh(t_c, d_c)) if (t_c is not None and d_c is not None) else None
             fase, oni = enso_for(enso, year, mes)
             rows.append({
