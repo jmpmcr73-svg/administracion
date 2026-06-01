@@ -179,16 +179,12 @@ def upsert(sb, table, rows, on_conflict):
         sb.table(table).upsert(rows[i:i+500], on_conflict=on_conflict).execute()
 
 
-def download_year(cds, year, tmpdir):
-    target = os.path.join(tmpdir, f"era5_ca_{year}.nc")
-    if os.path.exists(target):
-        return target
-    log("INFO", f"  Solicitando ERA5 {year} (Centroamérica) a Copernicus (puede haber cola)...")
+def _retrieve(cds, year, variables, target):
     cds.retrieve(
         ERA5_DATASET,
         {
             "product_type": "monthly_averaged_reanalysis",
-            "variable": ["2m_temperature", "total_precipitation", "2m_dewpoint_temperature"],
+            "variable": variables,
             "year": str(year),
             "month": [f"{m:02d}" for m in range(1, 13)],
             "time": "00:00",
@@ -198,7 +194,27 @@ def download_year(cds, year, tmpdir):
         },
         target,
     )
-    return target
+
+
+def download_year(cds, year, tmpdir):
+    """Descarga en DOS peticiones separadas (instantáneas vs. acumulada) para
+    garantizar que la precipitación venga, y devuelve un dataset combinado."""
+    log("INFO", f"  Solicitando ERA5 {year} (Centroamérica) a Copernicus (puede haber cola)...")
+    f_inst = os.path.join(tmpdir, f"era5_ca_{year}_inst.nc")
+    f_prec = os.path.join(tmpdir, f"era5_ca_{year}_prec.nc")
+    if not os.path.exists(f_inst):
+        _retrieve(cds, year, ["2m_temperature", "2m_dewpoint_temperature"], f_inst)
+    ds_inst = _open_nc(f_inst)
+    try:
+        if not os.path.exists(f_prec):
+            _retrieve(cds, year, ["total_precipitation"], f_prec)
+        ds_prec = _open_nc(f_prec)
+        ds = xr.merge([ds_inst, ds_prec], compat="override", join="outer")
+        log("INFO", f"  variables disponibles: {list(ds.data_vars)}")
+        return ds
+    except Exception as e:  # noqa
+        log("WARN", f"  precipitación {year} no disponible ({str(e)[:60]}); sigo sin lluvia")
+        return ds_inst
 
 
 def dewpoint_to_rh(t_c, d_c):
@@ -280,8 +296,7 @@ def main():
         for year in range(args.start, args.end + 1):
             log("STEP", f"ERA5 Centroamérica {year}")
             try:
-                nc = download_year(cds, year, tmp)
-                ds = _open_nc(nc)
+                ds = download_year(cds, year, tmp)
                 rows = process_year(ds, year, zonas, enso)
                 ds.close()
                 if rows:
