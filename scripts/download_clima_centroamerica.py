@@ -30,8 +30,20 @@ def _ensure(pkg, mod=None):
 
 for _p, _m in [("python-dotenv", "dotenv"), ("supabase", "supabase"),
                ("cdsapi", "cdsapi"), ("xarray", "xarray"),
-               ("netCDF4", "netCDF4"), ("numpy", "numpy")]:
+               ("h5netcdf", "h5netcdf"), ("netCDF4", "netCDF4"), ("numpy", "numpy")]:
     _ensure(_p, _m)
+
+
+def _open_nc(path):
+    """Abre NetCDF probando varios backends (h5netcdf suele ser el más fiable)."""
+    import xarray as _xr
+    last = None
+    for eng in ("h5netcdf", "netcdf4", None):
+        try:
+            return _xr.open_dataset(path, engine=eng) if eng else _xr.open_dataset(path)
+        except Exception as e:  # noqa
+            last = e
+    raise last
 
 from dotenv import load_dotenv
 from supabase import create_client
@@ -191,7 +203,7 @@ def main():
             log("STEP", f"ERA5 Centroamérica {year}")
             try:
                 nc = download_year(cds, year, tmp)
-                ds = xr.open_dataset(nc)
+                ds = _open_nc(nc)
                 rows = process_year(ds, year, zonas, enso)
                 ds.close()
                 if rows:
