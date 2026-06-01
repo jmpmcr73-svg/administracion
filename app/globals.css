@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #04090f;
+  --bg2: #081320;
+  --bg3: #0d1c30;
+  --teal: #00bcd4;
+  --border: rgba(0, 188, 212, 0.12);
+  --border2: rgba(255, 255, 255, 0.05);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: #c8d8ea;
+  font-family: "Archivo", system-ui, sans-serif;
+}
+
+.mono {
+  font-family: "Space Mono", monospace;
+}
+
+/* Badges de estado/severidad */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.b-ok {
+  background: rgba(0, 212, 76, 0.1);
+  color: #00d44c;
+  border: 1px solid rgba(0, 212, 76, 0.25);
+}
+.b-warn {
+  background: rgba(255, 171, 0, 0.1);
+  color: #ffab00;
+  border: 1px solid rgba(255, 171, 0, 0.25);
+}
+.b-crit {
+  background: rgba(255, 82, 82, 0.1);
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.25);
+}
+.b-blue {
+  background: rgba(68, 138, 255, 0.1);
+  color: #448aff;
+  border: 1px solid rgba(68, 138, 255, 0.25);
+}
+.b-teal {
+  background: rgba(0, 188, 212, 0.1);
+  color: #4dd0e1;
+  border: 1px solid rgba(0, 188, 212, 0.25);
+}
+
+/* Leaflet: el contenedor necesita altura explícita */
+.leaflet-container {
+  background: #fff;
+  font-family: "Archivo", system-ui, sans-serif;
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 188, 212, 0.25);
+  border-radius: 8px;
+}

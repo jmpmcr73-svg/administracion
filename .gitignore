@@ -1,3 +1,17 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Production
+/build
+
 # Python
 __pycache__/
 *.py[cod]
@@ -5,10 +19,27 @@ __pycache__/
 .venv/
 venv/
 
-# Environment / secrets
+# Environment / secrets  (NUNCA commitear secretos)
 .env
 .env.*
 !.env.*.template
+!.env.example
+!.env.local.example
+
+# Vercel
+.vercel
+
+# Debug / logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Testing
+/coverage
 
 # OS / editor
 .DS_Store
+*.pem
+.idea/
+.vscode/

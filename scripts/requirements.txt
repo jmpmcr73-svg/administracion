@@ -1,0 +1,4 @@
+# Ingesta Sentinel-2 (scripts/ingest_sentinel.py)
+requests>=2.31
+numpy>=1.26
+rasterio>=1.3
