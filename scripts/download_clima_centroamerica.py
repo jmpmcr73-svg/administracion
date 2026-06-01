@@ -34,15 +34,37 @@ for _p, _m in [("python-dotenv", "dotenv"), ("supabase", "supabase"),
     _ensure(_p, _m)
 
 
+def _resolve_nc(path):
+    """El CDS nuevo a veces entrega un ZIP (con .nc dentro) aunque se pida
+    netcdf. Detecta el tipo real por los magic bytes y devuelve la ruta de un
+    NetCDF utilizable (extrayéndolo si hace falta)."""
+    import zipfile, os as _os
+    with open(path, "rb") as f:
+        magic = f.read(4)
+    # ZIP -> 'PK\x03\x04'
+    if magic[:2] == b"PK":
+        outdir = path + "_extracted"
+        _os.makedirs(outdir, exist_ok=True)
+        with zipfile.ZipFile(path) as z:
+            ncs = [n for n in z.namelist() if n.endswith(".nc")]
+            if not ncs:
+                raise RuntimeError(f"ZIP del CDS sin .nc dentro: {z.namelist()}")
+            z.extractall(outdir)
+            return [_os.path.join(outdir, n) for n in ncs]
+    return [path]
+
+
 def _open_nc(path):
-    """Abre NetCDF probando varios backends (h5netcdf suele ser el más fiable)."""
+    """Abre NetCDF del CDS, manejando el caso ZIP y múltiples backends."""
     import xarray as _xr
+    members = _resolve_nc(path)
     last = None
-    for eng in ("h5netcdf", "netcdf4", None):
-        try:
-            return _xr.open_dataset(path, engine=eng) if eng else _xr.open_dataset(path)
-        except Exception as e:  # noqa
-            last = e
+    for m in members:
+        for eng in ("h5netcdf", "netcdf4", None):
+            try:
+                return _xr.open_dataset(m, engine=eng) if eng else _xr.open_dataset(m)
+            except Exception as e:  # noqa
+                last = e
     raise last
 
 from dotenv import load_dotenv

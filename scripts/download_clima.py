@@ -38,15 +38,34 @@ for _p, _i in [("python-dotenv", "dotenv"), ("supabase", "supabase"),
     _ensure(_p, _i)
 
 
+def _resolve_nc(path):
+    """El CDS nuevo a veces entrega un ZIP (con .nc dentro) aunque se pida
+    netcdf. Detecta el tipo real y devuelve rutas NetCDF utilizables."""
+    import zipfile, os as _os
+    with open(path, "rb") as f:
+        magic = f.read(4)
+    if magic[:2] == b"PK":
+        outdir = path + "_extracted"
+        _os.makedirs(outdir, exist_ok=True)
+        with zipfile.ZipFile(path) as z:
+            ncs = [n for n in z.namelist() if n.endswith(".nc")]
+            if not ncs:
+                raise RuntimeError(f"ZIP del CDS sin .nc dentro: {z.namelist()}")
+            z.extractall(outdir)
+            return [_os.path.join(outdir, n) for n in ncs]
+    return [path]
+
+
 def _open_nc(path):
-    """Abre NetCDF probando varios backends (h5netcdf suele ser el más fiable)."""
+    """Abre NetCDF del CDS, manejando el caso ZIP y múltiples backends."""
     import xarray as _xr
     last = None
-    for eng in ("h5netcdf", "netcdf4", None):
-        try:
-            return _xr.open_dataset(path, engine=eng) if eng else _xr.open_dataset(path)
-        except Exception as e:  # noqa
-            last = e
+    for m in _resolve_nc(path):
+        for eng in ("h5netcdf", "netcdf4", None):
+            try:
+                return _xr.open_dataset(m, engine=eng) if eng else _xr.open_dataset(m)
+            except Exception as e:  # noqa
+                last = e
     raise last
 
 from dotenv import load_dotenv
