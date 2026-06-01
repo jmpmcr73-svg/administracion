@@ -209,11 +209,23 @@ def download_year(cds, year, tmpdir):
         if not os.path.exists(f_prec):
             _retrieve(cds, year, ["total_precipitation"], f_prec)
         ds_prec = _open_nc(f_prec)
-        ds = xr.merge([ds_inst, ds_prec], compat="override", join="outer")
-        log("INFO", f"  variables disponibles: {list(ds.data_vars)}")
-        return ds
+        # Inyectar tp por POSICIÓN (mismas 12 filas mensuales, misma grilla)
+        # evitando xr.merge que crea timesteps NaN por coords de tiempo distintas.
+        tp_name = next((v for v in ds_prec.data_vars if v.lower() == "tp"),
+                       list(ds_prec.data_vars)[0])
+        tp_arr = ds_prec[tp_name]
+        # alinear dimensión temporal al nombre de ds_inst
+        t_inst = "valid_time" if "valid_time" in ds_inst.coords else "time"
+        t_prec = "valid_time" if "valid_time" in ds_prec.coords else "time"
+        if t_prec != t_inst:
+            tp_arr = tp_arr.rename({t_prec: t_inst})
+        # asignar usando los mismos valores de coordenada temporal de ds_inst
+        tp_arr = tp_arr.assign_coords({t_inst: ds_inst[t_inst].values})
+        ds_inst["tp"] = tp_arr
+        log("INFO", f"  variables disponibles: {list(ds_inst.data_vars)}")
+        return ds_inst
     except Exception as e:  # noqa
-        log("WARN", f"  precipitación {year} no disponible ({str(e)[:60]}); sigo sin lluvia")
+        log("WARN", f"  precipitación {year} no disponible ({str(e)[:80]}); sigo sin lluvia")
         return ds_inst
 
 
