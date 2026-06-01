@@ -72,8 +72,20 @@ def connect():
     return create_client(url, key)
 
 
+def dedup_rows(rows, on_conflict):
+    """Elimina filas con clave de conflicto duplicada (gana la última).
+    Evita el error 'ON CONFLICT DO UPDATE cannot affect row a second time'."""
+    keys = [k.strip() for k in on_conflict.split(",")]
+    seen = {}
+    for r in rows:
+        k = tuple(r.get(c) for c in keys)
+        seen[k] = r  # la última ocurrencia sobreescribe
+    return list(seen.values())
+
+
 def upsert_chunked(sb, table, rows, on_conflict, chunk=500):
     """Inserta filas en lotes. Devuelve cuántas se procesaron."""
+    rows = dedup_rows(rows, on_conflict)
     total = 0
     for i in range(0, len(rows), chunk):
         batch = rows[i:i + chunk]
@@ -253,7 +265,14 @@ def fetch_tornados(sb, test=False):
             "muertes": int(num("fat")) if num("fat") is not None else None,
             "heridos": int(num("inj")) if num("inj") is not None else None,
             "fuente": "NOAA SPC",
-            "external_id": (x.get("om") or "").strip() + "-" + str(yr),
+            # om = nº de tornado; un tornado que cruza estados/segmentos aparece
+            # en varias filas -> incluimos estado (st) y segmento (sg) para unicidad
+            "external_id": "-".join([
+                (x.get("om") or "").strip(),
+                str(yr),
+                (x.get("st") or "").strip(),
+                (x.get("sg") or "0").strip(),
+            ]),
         })
     if test:
         rows = rows[:500]
