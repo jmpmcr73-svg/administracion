@@ -54,18 +54,38 @@ def _resolve_nc(path):
     return [path]
 
 
+def _open_one(m):
+    import xarray as _xr
+    last = None
+    for eng in ("h5netcdf", "netcdf4", None):
+        try:
+            return _xr.open_dataset(m, engine=eng) if eng else _xr.open_dataset(m)
+        except Exception as e:  # noqa
+            last = e
+    raise last
+
+
 def _open_nc(path):
-    """Abre NetCDF del CDS, manejando el caso ZIP y múltiples backends."""
+    """Abre NetCDF(s) del CDS. El ZIP del CDS nuevo suele separar variables
+    instantáneas (t2m, d2m) y acumuladas (tp) en .nc distintos; los combinamos."""
     import xarray as _xr
     members = _resolve_nc(path)
-    last = None
+    if len(members) == 1:
+        return _open_one(members[0])
+    datasets = []
     for m in members:
-        for eng in ("h5netcdf", "netcdf4", None):
-            try:
-                return _xr.open_dataset(m, engine=eng) if eng else _xr.open_dataset(m)
-            except Exception as e:  # noqa
-                last = e
-    raise last
+        try:
+            datasets.append(_open_one(m))
+        except Exception:  # noqa
+            pass
+    if not datasets:
+        raise RuntimeError("No se pudo abrir ningún .nc del ZIP del CDS")
+    # merge por variables (mismas coords lat/lon/time)
+    try:
+        return _xr.merge(datasets, compat="override", join="outer")
+    except Exception:  # noqa
+        # si el merge falla, devolver el que tenga más variables
+        return max(datasets, key=lambda d: len(d.data_vars))
 
 from dotenv import load_dotenv
 from supabase import create_client
@@ -165,8 +185,10 @@ def dewpoint_to_rh(t_c, d_c):
 def process_year(ds, year, zonas, enso):
     name = {v.lower(): v for v in ds.variables}
     t2m = ds[name.get("t2m", "t2m")]
-    tp = ds[name.get("tp", "tp")]
     d2m = ds[name.get("d2m", "d2m")]
+    tp = ds[name["tp"]] if "tp" in name else None  # precipitación opcional
+    if tp is None:
+        log("WARN", "  Sin variable 'tp' (precipitación) en este archivo; se cargará null")
     lat_n = "latitude" if "latitude" in ds.coords else "lat"
     lon_n = "longitude" if "longitude" in ds.coords else "lon"
     time_n = "valid_time" if "valid_time" in ds.coords else "time"
@@ -175,7 +197,8 @@ def process_year(ds, year, zonas, enso):
     rows = []
     for z in zonas:
         sl = {lat_n: slice(z["lat_max"], z["lat_min"]), lon_n: slice(z["lon_min"], z["lon_max"])}
-        st, sp, sd = t2m.sel(sl), tp.sel(sl), d2m.sel(sl)
+        st, sd = t2m.sel(sl), d2m.sel(sl)
+        sp = tp.sel(sl) if tp is not None else None
         if st.sizes.get(lat_n, 0) == 0 or st.sizes.get(lon_n, 0) == 0:
             log("WARN", f"  zona {z['zona_code']} sin celdas ERA5 (bbox pequeño)")
             continue
@@ -184,7 +207,10 @@ def process_year(ds, year, zonas, enso):
             t_c = float(st.isel({time_n: i}).mean().values) - 273.15
             d_c = float(sd.isel({time_n: i}).mean().values) - 273.15
             dias = calendar.monthrange(year, mes)[1]
-            p_mm = float(sp.isel({time_n: i}).mean().values) * 1000.0 * dias
+            if sp is not None:
+                p_mm = round(float(sp.isel({time_n: i}).mean().values) * 1000.0 * dias, 2)
+            else:
+                p_mm = None
             fase, oni = enso_for(enso, year, mes)
             rows.append({
                 "zona_code": z["zona_code"],
@@ -192,7 +218,7 @@ def process_year(ds, year, zonas, enso):
                 "temp_media_c": round(t_c, 2),
                 "temp_min_c": round(float(st.isel({time_n: i}).min().values) - 273.15, 2),
                 "temp_max_c": round(float(st.isel({time_n: i}).max().values) - 273.15, 2),
-                "precip_total_mm": round(p_mm, 2),
+                "precip_total_mm": p_mm,
                 "humedad_rel_pct": round(dewpoint_to_rh(t_c, d_c), 1),
                 "enso_fase": fase, "enso_oni": oni,
                 "fuente": "Copernicus ERA5",
