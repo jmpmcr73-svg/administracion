@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #06080f;
+  --panel: #0b0f1a;
+  --cyan: #34e1d4;
+  --azul: #4d9bff;
+  --violeta: #9b8cff;
+  --ambar: #ffb84d;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: #c9d6ea;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  background-image:
+    radial-gradient(900px 500px at 12% -8%, rgba(52, 225, 212, 0.08), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(77, 155, 255, 0.07), transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, rgba(155, 140, 255, 0.06), transparent 60%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-line bg-panel/70 backdrop-blur-md shadow-panel;
+  }
+  .label {
+    @apply font-mono text-[10px] uppercase tracking-[0.18em] text-muted;
+  }
+  .display {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(120, 160, 220, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120, 160, 220, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 160, 220, 0.25) transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: rgba(120, 160, 220, 0.22);
+    border-radius: 8px;
+  }
+}

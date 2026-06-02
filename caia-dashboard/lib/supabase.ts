@@ -1,0 +1,37 @@
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Cliente Supabase SERVER-SIDE para caia-prod.
+ *
+ * Usa la SERVICE ROLE key, que bypassa RLS — por eso este módulo NUNCA debe
+ * importarse desde un Client Component. Solo se consume en Route Handlers
+ * (app/api/**) que corren en el servidor.
+ *
+ * Las tablas viven en schemas custom (akasha, kronos, war_room, clima,
+ * vulcano). Se accede con `.schema(<schema>)`. Esos schemas deben estar
+ * expuestos en la Data API del proyecto (Settings -> API -> Exposed schemas).
+ */
+let _client: SupabaseClient | null = null;
+
+export function getSupabase(): SupabaseClient {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "Faltan SUPABASE_URL / SUPABASE_SERVICE_KEY en el entorno (.env.local o variables de Vercel)."
+    );
+  }
+
+  if (!_client) {
+    _client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return _client;
+}
+
+/** Atajo: cliente apuntando a un schema concreto. */
+export function fromSchema(schema: string) {
+  return getSupabase().schema(schema);
+}
