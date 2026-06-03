@@ -35,8 +35,30 @@ export function KronosPanel() {
 
   if (error) {
     return (
-      <Panel title="KRONOS · Memoria" accent="violeta">
-        <p className="font-mono text-xs text-crit">Error: {error}</p>
+      <Panel
+        title="KRONOS · Memoria del proyecto"
+        subtitle="Sesiones · avances · decisiones · pendientes"
+        accent="violeta"
+      >
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-violeta/30 bg-violeta/[0.04] px-6 py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-violeta/30 bg-violeta/10 text-xl">
+            🔒
+          </div>
+          <p className="display text-sm font-600 text-white">Schema `kronos` no expuesto</p>
+          <p className="max-w-md text-[12px] leading-relaxed text-[#8fa3bf]">
+            Este panel se activa cuando el schema <span className="text-violeta">kronos</span> esté
+            disponible en la Data API. Se mantiene fuera por seguridad: tiene RLS deshabilitado y la
+            anon key con acceso total. Al habilitar RLS (o exponerlo con políticas), acá vas a ver
+            las <strong>59 sesiones</strong>, <strong>171 avances</strong>,{" "}
+            <strong>99 decisiones</strong> y <strong>321 pendientes</strong> reales.
+          </p>
+          <details className="mt-1 w-full max-w-md text-left">
+            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-muted">
+              Detalle técnico
+            </summary>
+            <p className="mt-1 break-words font-mono text-[10px] text-muted">{error}</p>
+          </details>
+        </div>
       </Panel>
     );
   }
