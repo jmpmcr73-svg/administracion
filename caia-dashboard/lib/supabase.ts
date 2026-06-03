@@ -37,3 +37,12 @@ export function getSupabase(): SupabaseClient {
 export function fromSchema(schema: string) {
   return getSupabase().schema(schema);
 }
+
+/**
+ * Atajo a una tabla/vista del schema public (expuesto por defecto).
+ * El dashboard lee vistas seguras public.caia_* que envuelven los schemas
+ * akasha/kronos/war_room/clima/vulcano y solo otorgan acceso a service_role.
+ */
+export function table(name: string) {
+  return getSupabase().from(name);
+}

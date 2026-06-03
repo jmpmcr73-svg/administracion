@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { fromSchema } from "@/lib/supabase";
+import { table } from "@/lib/supabase";
 import { errMsg } from "@/lib/err";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Datos satelitales reales: vulcano.monitoreo_usgs + clima.{sentinel5p_so2,
-// sentinel2_ndvi, noaa_sst}. Cada fuente es tolerante: si su schema no está
-// expuesto, se omite y se reporta en `errors` sin tumbar el resto.
+// Datos satelitales reales vía vistas seguras public.caia_* (vulcano + clima).
 async function safe<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Promise<{ data: T | null; error: string | null }> {
   try {
     const { data, error } = await p;
@@ -21,26 +19,22 @@ export async function GET() {
   try {
     const [vol, so2, ndvi, sst] = await Promise.all([
       safe(
-        fromSchema("vulcano")
-          .from("monitoreo_usgs")
-          .select("volcán_nombre, latitud, longitud, elevacion_m, alertas_nivel, aviacion_codigo, so2_toneladas_dia, sismos_24h, magnitud_promedio, altura_columna_km, fecha")
+        table("caia_vulcano")
+          .select("volcan_nombre, latitud, longitud, elevacion_m, alertas_nivel, aviacion_codigo, so2_toneladas_dia, sismos_24h, magnitud_promedio, altura_columna_km, fecha")
           .order("fecha", { ascending: false })
       ),
       safe(
-        fromSchema("clima")
-          .from("sentinel5p_so2")
+        table("caia_clima_so2")
           .select("fecha, latitud, longitud, so2_dobson_units, no2_molec_cm2, o3_dobson_units, cobertura_nubes_pct")
           .order("fecha", { ascending: false })
       ),
       safe(
-        fromSchema("clima")
-          .from("sentinel2_ndvi")
+        table("caia_clima_ndvi")
           .select("fecha, latitud, longitud, ndvi, evi, cobertura_nubes_pct")
           .order("fecha", { ascending: false })
       ),
       safe(
-        fromSchema("clima")
-          .from("noaa_sst")
+        table("caia_clima_sst")
           .select("fecha, region_id, sst_promedio_c, sst_anomaly_c, el_nino_estado, el_nino_probabilidad_pct")
           .order("fecha", { ascending: false })
       ),
@@ -48,21 +42,20 @@ export async function GET() {
 
     const errors = [vol.error, so2.error, ndvi.error, sst.error].filter(Boolean) as string[];
 
-    // Volcanes: dedupe quedándonos con el registro más reciente por nombre.
     type V = {
-      "volcán_nombre": string; latitud: number; longitud: number; elevacion_m: number | null;
+      volcan_nombre: string; latitud: number; longitud: number; elevacion_m: number | null;
       alertas_nivel: number | null; aviacion_codigo: string | null; so2_toneladas_dia: number | null;
       sismos_24h: number | null; magnitud_promedio: number | null; altura_columna_km: number | null; fecha: string | null;
     };
     const seen = new Set<string>();
     const volcanoes = ((vol.data as V[] | null) ?? [])
       .filter((v) => {
-        if (seen.has(v["volcán_nombre"])) return false;
-        seen.add(v["volcán_nombre"]);
+        if (seen.has(v.volcan_nombre)) return false;
+        seen.add(v.volcan_nombre);
         return true;
       })
       .map((v) => ({
-        nombre: v["volcán_nombre"],
+        nombre: v.volcan_nombre,
         lat: Number(v.latitud),
         lng: Number(v.longitud),
         elevacion_m: v.elevacion_m,
@@ -77,7 +70,6 @@ export async function GET() {
 
     type S = { fecha: string | null; latitud: number; longitud: number; so2_dobson_units: number | null; no2_molec_cm2: number | null; o3_dobson_units: number | null; cobertura_nubes_pct: number | null };
     const so2All = (so2.data as S[] | null) ?? [];
-    // último punto por coordenada para el mapa
     const so2seen = new Set<string>();
     const so2Points = so2All
       .filter((s) => {
@@ -104,10 +96,9 @@ export async function GET() {
     const sstAll = (sst.data as T[] | null) ?? [];
     const sstNino34 = sstAll
       .filter((r) => r.region_id === "nino34")
-      .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? "")); // cronológico para el sparkline
+      .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? ""));
     const sstLatest = sstAll[0] ?? null;
 
-    // Alarmas derivadas de datos reales
     const alarmas: { titulo: string; detalle: string; severidad: "crit" | "warn" | "info" }[] = [];
     for (const v of volcanoes) {
       if ((v.alerta ?? 0) >= 2) alarmas.push({ titulo: `Volcán ${v.nombre} · nivel ${v.alerta}`, detalle: `${v.so2_td ?? 0} t/día SO₂ · ${v.sismos ?? 0} sismos/24h`, severidad: "crit" });

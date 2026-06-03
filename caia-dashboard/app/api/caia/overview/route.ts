@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fromSchema } from "@/lib/supabase";
+import { table } from "@/lib/supabase";
 import { errMsg } from "@/lib/err";
 import { countBy } from "@/lib/aggregate";
 import { normEstado } from "@/lib/format";
@@ -8,16 +8,10 @@ import type { OverviewData } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Conteo tolerante a fallos: si el schema no está expuesto en la Data API
-// (p.ej. kronos no expuesto a propósito por seguridad), devuelve null en vez
-// de tumbar toda la respuesta. Así overview sigue sirviendo akasha + war_room.
-async function count(
-  schema: string,
-  table: string,
-  filter?: [string, string]
-): Promise<number | null> {
+// Conteo tolerante: si la vista falla, devuelve null en vez de tumbar todo.
+async function count(view: string, filter?: [string, string]): Promise<number | null> {
   try {
-    let q = fromSchema(schema).from(table).select("*", { count: "exact", head: true });
+    let q = table(view).select("*", { count: "exact", head: true });
     if (filter) q = q.eq(filter[0], filter[1]);
     const { count, error } = await q;
     if (error) return null;
@@ -29,10 +23,9 @@ async function count(
 
 export async function GET() {
   try {
-    // Los 235 agentes: traemos solo las columnas que agregamos (rápido).
-    const { data: agentes, error } = await fromSchema("akasha")
-      .from("agentes")
-      .select("proyecto, estado, capa_logica, tipo, modelo_ia");
+    const { data: agentes, error } = await table("caia_agentes").select(
+      "proyecto, estado, capa_logica, tipo, modelo_ia"
+    );
     if (error) throw error;
     const rows = agentes ?? [];
 
@@ -46,14 +39,14 @@ export async function GET() {
       crisis_activas,
       eventos,
     ] = await Promise.all([
-      count("kronos", "sesiones"),
-      count("kronos", "avances"),
-      count("kronos", "decisiones"),
-      count("kronos", "pendientes"),
-      count("kronos", "pendientes", ["estado", "abierto"]),
-      count("war_room", "crisis"),
-      count("war_room", "crisis", ["estado", "Activo"]),
-      count("war_room", "eventos"),
+      count("caia_kr_sesiones"),
+      count("caia_kr_avances"),
+      count("caia_kr_decisiones"),
+      count("caia_kr_pendientes"),
+      count("caia_kr_pendientes", ["estado", "abierto"]),
+      count("caia_wr_crisis"),
+      count("caia_wr_crisis", ["estado", "Activo"]),
+      count("caia_wr_eventos"),
     ]);
 
     const por_proyecto = countBy(rows, (r) => r.proyecto, "(sin proyecto)");
@@ -79,9 +72,6 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (e) {
-    return NextResponse.json(
-      { error: errMsg(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errMsg(e) }, { status: 500 });
   }
 }

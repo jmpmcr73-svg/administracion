@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fromSchema } from "@/lib/supabase";
+import { table } from "@/lib/supabase";
 import { errMsg } from "@/lib/err";
 import { normEstado } from "@/lib/format";
 import type { WarRoomData } from "@/lib/types";
@@ -9,20 +9,15 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const wr = fromSchema("war_room");
-
     const [crisisRes, kpisRes, eventosRes] = await Promise.all([
-      wr
-        .from("crisis")
+      table("caia_wr_crisis")
         .select("crisis_id, codigo, titulo, dimension, tipo_evento, descripcion, defcon, estado, capital_riesgo, capital_mitigado, timestamp_inicio")
         .order("defcon", { ascending: true })
         .order("timestamp_inicio", { ascending: false }),
-      wr
-        .from("kpis")
+      table("caia_wr_kpis")
         .select("kpi_id, nombre, categoria, valor_actual, valor_meta, unidad, tendencia, alerta_activa, dimension")
         .order("alerta_activa", { ascending: false }),
-      wr
-        .from("eventos")
+      table("caia_wr_eventos")
         .select("evento_id, origen_modulo, tipo_evento, severidad, titulo, descripcion, created_at")
         .order("created_at", { ascending: false })
         .limit(15),
@@ -42,9 +37,6 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (e) {
-    return NextResponse.json(
-      { error: errMsg(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errMsg(e) }, { status: 500 });
   }
 }
