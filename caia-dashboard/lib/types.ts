@@ -38,16 +38,16 @@ export interface OverviewData {
   por_tipo: Conteo[];
   por_modelo: Conteo[];
   kronos: {
-    sesiones: number;
-    avances: number;
-    decisiones: number;
-    pendientes_total: number;
-    pendientes_abiertos: number;
+    sesiones: number | null;
+    avances: number | null;
+    decisiones: number | null;
+    pendientes_total: number | null;
+    pendientes_abiertos: number | null;
   };
   warroom: {
-    crisis_total: number;
-    crisis_activas: number;
-    eventos: number;
+    crisis_total: number | null;
+    crisis_activas: number | null;
+    eventos: number | null;
   };
 }
 

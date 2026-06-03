@@ -7,12 +7,23 @@ import type { OverviewData } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function count(schema: string, table: string, filter?: [string, string]) {
-  let q = fromSchema(schema).from(table).select("*", { count: "exact", head: true });
-  if (filter) q = q.eq(filter[0], filter[1]);
-  const { count, error } = await q;
-  if (error) throw error;
-  return count ?? 0;
+// Conteo tolerante a fallos: si el schema no está expuesto en la Data API
+// (p.ej. kronos no expuesto a propósito por seguridad), devuelve null en vez
+// de tumbar toda la respuesta. Así overview sigue sirviendo akasha + war_room.
+async function count(
+  schema: string,
+  table: string,
+  filter?: [string, string]
+): Promise<number | null> {
+  try {
+    let q = fromSchema(schema).from(table).select("*", { count: "exact", head: true });
+    if (filter) q = q.eq(filter[0], filter[1]);
+    const { count, error } = await q;
+    if (error) return null;
+    return count ?? 0;
+  } catch {
+    return null;
+  }
 }
 
 export async function GET() {

@@ -51,12 +51,12 @@ export function Dashboard() {
           <KpiCard label="Agentes totales" value={ov?.total_agentes ?? 0} accent="cyan" sub="akasha.agentes" />
           <KpiCard label="Agentes activos" value={ov?.agentes_activos ?? 0} accent="azul" sub="estado = activo" />
           <KpiCard label="Proyectos" value={ov?.proyectos_distintos ?? 0} accent="violeta" sub="distintos" />
-          <KpiCard label="Sesiones KRONOS" value={ov?.kronos.sesiones ?? 0} accent="cyan" />
+          <KpiCard label="Sesiones KRONOS" value={ov?.kronos.sesiones ?? "—"} accent="cyan" />
           <KpiCard
             label="Pendientes abiertos"
-            value={ov?.kronos.pendientes_abiertos ?? 0}
+            value={ov?.kronos.pendientes_abiertos ?? "—"}
             accent="ambar"
-            sub={`de ${ov?.kronos.pendientes_total ?? 0} totales`}
+            sub={`de ${ov?.kronos.pendientes_total ?? "—"} totales`}
           />
           <KpiCard
             label="Crisis activas"
@@ -66,8 +66,8 @@ export function Dashboard() {
           />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard label="Avances" value={ov?.kronos.avances ?? 0} accent="violeta" />
-          <KpiCard label="Decisiones" value={ov?.kronos.decisiones ?? 0} accent="azul" />
+          <KpiCard label="Avances" value={ov?.kronos.avances ?? "—"} accent="violeta" />
+          <KpiCard label="Decisiones" value={ov?.kronos.decisiones ?? "—"} accent="azul" />
           <KpiCard label="Eventos War Room" value={ov?.warroom.eventos ?? 0} accent="cyan" />
           <KpiCard
             label="Modelos IA"
