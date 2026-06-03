@@ -15,11 +15,13 @@ let _client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
+  // Aceptamos ambas convenciones de nombre para la service key:
+  // SUPABASE_SERVICE_ROLE_KEY (convención Supabase/Vercel) o SUPABASE_SERVICE_KEY.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
   if (!url || !key) {
     throw new Error(
-      "Faltan SUPABASE_URL / SUPABASE_SERVICE_KEY en el entorno (.env.local o variables de Vercel)."
+      "Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (o SUPABASE_SERVICE_KEY) en el entorno (.env.local o variables de Vercel)."
     );
   }
 
