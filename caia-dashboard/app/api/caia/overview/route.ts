@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fromSchema } from "@/lib/supabase";
+import { errMsg } from "@/lib/err";
 import { countBy } from "@/lib/aggregate";
 import { normEstado } from "@/lib/format";
 import type { OverviewData } from "@/lib/types";
@@ -79,7 +80,7 @@ export async function GET() {
     return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Error desconocido" },
+      { error: errMsg(e) },
       { status: 500 }
     );
   }
