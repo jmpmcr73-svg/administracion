@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Logo } from "./Logo";
 
 export function Topbar() {
@@ -12,7 +13,14 @@ export function Topbar() {
           <div className="label">Cerebro unificado · caia-prod</div>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-3 py-1">
+        <Link
+          href="/satelital"
+          className="ml-auto rounded-lg border border-azul/40 bg-azul/10 px-3 py-1.5 font-mono text-[11px] font-700 text-azul transition hover:bg-azul/20"
+        >
+          🛰️ SCADA Satelital 3D →
+        </Link>
+
+        <div className="flex items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-3 py-1">
           <span className="h-2 w-2 animate-pulseDot rounded-full bg-cyan shadow-glow" />
           <span className="font-mono text-[10px] font-700 uppercase tracking-[0.2em] text-cyan">
             En vivo
