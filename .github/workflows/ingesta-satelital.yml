@@ -1,0 +1,55 @@
+name: Ingesta satelital CR/SV/PA
+
+# Crons sugeridos del pipeline GEA. Cada job corre ingesta_satelital_crsv.py
+# con un subconjunto de fuentes. Requiere secrets en el repo:
+#   SUPABASE_URL_KRONOS, SUPABASE_KEY_KRONOS,
+#   NASA_EARTHDATA_USER, NASA_EARTHDATA_PASS  (para GPM/MODIS)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # cada 6 h  -> sentinel2, gpm
+    - cron: "0 */12 * * *"  # cada 12 h -> sentinel1, modis
+    - cron: "0 * * * *"     # cada hora -> tropomi (SO2 volcanes)
+    - cron: "0 8 * * *"     # diario    -> enos
+  workflow_dispatch:
+    inputs:
+      fuentes:
+        description: "Fuentes (coma): sentinel2,sentinel1,tropomi,modis,gpm,enos | all"
+        default: "all"
+
+jobs:
+  ingesta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests rasterio numpy scipy supabase python-dotenv \
+                      pystac-client planetary-computer rio-cogeo shapely netCDF4
+
+      - name: Seleccionar fuentes según el cron
+        id: sel
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 */6 * * *")  echo "fuentes=sentinel2,gpm" >> "$GITHUB_OUTPUT" ;;
+            "0 */12 * * *") echo "fuentes=sentinel1,modis" >> "$GITHUB_OUTPUT" ;;
+            "0 * * * *")    echo "fuentes=tropomi" >> "$GITHUB_OUTPUT" ;;
+            "0 8 * * *")    echo "fuentes=enos" >> "$GITHUB_OUTPUT" ;;
+            *)              echo "fuentes=${{ github.event.inputs.fuentes || 'all' }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Ejecutar ingesta
+        env:
+          SUPABASE_URL_KRONOS: ${{ secrets.SUPABASE_URL_KRONOS }}
+          SUPABASE_KEY_KRONOS: ${{ secrets.SUPABASE_KEY_KRONOS }}
+          NASA_EARTHDATA_USER: ${{ secrets.NASA_EARTHDATA_USER }}
+          NASA_EARTHDATA_PASS: ${{ secrets.NASA_EARTHDATA_PASS }}
+        run: |
+          python scripts/ingesta_satelital_crsv.py \
+            --fuentes "${{ steps.sel.outputs.fuentes }}" --paises CR,SV,PA
