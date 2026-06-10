@@ -2,7 +2,7 @@ name: Ingesta satelital CR/SV/PA
 
 # Crons sugeridos del pipeline GEA. Cada job corre ingesta_satelital_crsv.py
 # con un subconjunto de fuentes. Requiere secrets en el repo:
-#   SUPABASE_URL_KRONOS, SUPABASE_KEY_KRONOS,
+#   SUPABASE_URL_CAIA, SUPABASE_KEY_CAIA,
 #   NASA_EARTHDATA_USER, NASA_EARTHDATA_PASS  (para GPM/MODIS)
 
 on:
@@ -46,8 +46,8 @@ jobs:
 
       - name: Ejecutar ingesta
         env:
-          SUPABASE_URL_KRONOS: ${{ secrets.SUPABASE_URL_KRONOS }}
-          SUPABASE_KEY_KRONOS: ${{ secrets.SUPABASE_KEY_KRONOS }}
+          SUPABASE_URL_CAIA: ${{ secrets.SUPABASE_URL_CAIA }}
+          SUPABASE_KEY_CAIA: ${{ secrets.SUPABASE_KEY_CAIA }}
           NASA_EARTHDATA_USER: ${{ secrets.NASA_EARTHDATA_USER }}
           NASA_EARTHDATA_PASS: ${{ secrets.NASA_EARTHDATA_PASS }}
         run: |

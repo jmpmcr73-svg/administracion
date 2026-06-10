@@ -3,8 +3,8 @@
 #
 # Descarga y procesa fuentes satelitales gratuitas, calcula estadísticas
 # zonales por país y las guarda en Supabase:
-#   - gea.observaciones_satelitales  (serie de valores zonales)
-#   - gea.alertas_satelitales        (anomalías significativas)
+#   - public.sat_observaciones  (CAIA-Core; serie de valores zonales, proyecto='gea')
+#   - public.sat_alertas        (CAIA-Core; anomalías significativas, proyecto='gea')
 #
 # Fuentes (todas gratuitas):
 #   sentinel2  -> Sentinel-2 L2A   (Microsoft Planetary Computer STAC)  NDVI/NDWI/NBR
@@ -28,7 +28,7 @@
 #               pystac-client planetary-computer rio-cogeo shapely netCDF4
 #
 # Variables de entorno (.env en cwd o ~/.env.caia-hub):
-#   SUPABASE_URL_KRONOS / SUPABASE_KEY_KRONOS      (destino por defecto)
+#   SUPABASE_URL_CAIA / SUPABASE_KEY_CAIA          (CAIA-Core, destino por defecto)
 #   SUPABASE_URL_IAGRI  / SUPABASE_KEY_IAGRI       (destino alterno --target iagri)
 #   NASA_EARTHDATA_USER / NASA_EARTHDATA_PASS      (GPM IMERG, MODIS opcional)
 #   NASA_EARTHDATA_TOKEN                           (alternativa a user/pass)
@@ -139,34 +139,26 @@ def connect(target):
             load_dotenv(f)
     if target == "iagri":
         url = os.getenv("SUPABASE_URL_IAGRI")
-        key = os.getenv("SUPABASE_KEY_IAGRI") or os.getenv("SUPABASE_KEY_KRONOS")
-    else:  # kronos (por defecto)
-        url = os.getenv("SUPABASE_URL_KRONOS") or os.getenv("SUPABASE_CAIA_HUB_URL")
-        key = (os.getenv("SUPABASE_KEY_KRONOS")
+        key = os.getenv("SUPABASE_KEY_IAGRI") or os.getenv("SUPABASE_KEY_CAIA")
+    else:  # caia-core (por defecto)
+        url = os.getenv("SUPABASE_URL_CAIA") or os.getenv("SUPABASE_CAIA_HUB_URL")
+        key = (os.getenv("SUPABASE_KEY_CAIA")
                or os.getenv("SUPABASE_CAIA_HUB_SERVICE_ROLE_KEY"))
     if not url or not key:
         log("ERR", f"Faltan credenciales Supabase para target='{target}' "
                    "(SUPABASE_URL_/KEY_ en .env o ~/.env.caia-hub)")
         sys.exit(1)
-    log("OK", f"Conectado a {url} (schema gea)")
+    log("OK", f"Conectado a {url} (public.sat_observaciones / sat_alertas)")
     return create_client(url, key)
 
 
-def _gea(sb):
-    """Cliente apuntando al schema gea. supabase-py>=2 soporta .schema()."""
-    try:
-        return sb.schema("gea")
-    except AttributeError:
-        return sb.postgrest.schema("gea")
-
-
 def insert_observaciones(sb, rows):
+    # destino: public.sat_observaciones (CAIA-Core)
     if not rows:
         return 0
-    g = _gea(sb)
     total = 0
     for i in range(0, len(rows), 500):
-        g.table("observaciones_satelitales").upsert(
+        sb.table("sat_observaciones").upsert(
             rows[i:i + 500],
             on_conflict="pais_id,fuente,variable,fecha_obs,producto_id",
         ).execute()
@@ -175,10 +167,10 @@ def insert_observaciones(sb, rows):
 
 
 def insert_alertas(sb, rows):
+    # destino: public.sat_alertas (CAIA-Core)
     if not rows:
         return 0
-    g = _gea(sb)
-    g.table("alertas_satelitales").insert(rows).execute()
+    sb.table("sat_alertas").insert(rows).execute()
     return len(rows)
 
 
@@ -186,6 +178,7 @@ def obs_row(pais, fuente, variable, stats, bbox, crs, fecha_obs,
             producto_id, meta):
     """Construye una fila de observación con la estadística zonal."""
     return {
+        "proyecto": "gea",
         "pais_id": pais,
         "fuente": fuente,
         "variable": variable,
@@ -207,6 +200,7 @@ def obs_row(pais, fuente, variable, stats, bbox, crs, fecha_obs,
 def alerta_row(pais, fuente, variable, severidad, valor, umbral, mensaje,
                bbox, fecha_obs, producto_id):
     return {
+        "proyecto": "gea",
         "pais_id": pais,
         "fuente": fuente,
         "variable": variable,
@@ -711,13 +705,13 @@ def _persist(sb, obs, alertas):
     try:
         n = insert_observaciones(sb, obs)
         if n:
-            log("OK", f"  {n} observaciones guardadas en gea.observaciones_satelitales")
+            log("OK", f"  {n} observaciones guardadas en public.sat_observaciones")
     except Exception as e:  # noqa
         log("ERR", f"  fallo al guardar observaciones: {str(e)[:160]}")
     try:
         m = insert_alertas(sb, alertas)
         if m:
-            log("WARN", f"  {m} ALERTAS insertadas en gea.alertas_satelitales")
+            log("WARN", f"  {m} ALERTAS insertadas en public.sat_alertas")
     except Exception as e:  # noqa
         log("ERR", f"  fallo al guardar alertas: {str(e)[:160]}")
 
@@ -734,13 +728,13 @@ FUENTES = {
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Ingesta satelital CR+SV+PA -> Supabase gea.*")
+        description="Ingesta satelital CR+SV+PA -> Supabase public.sat_* (CAIA-Core)")
     ap.add_argument("--fuentes", default="all",
                     help="lista separada por comas: " + ",".join(FUENTES) + " | all")
     ap.add_argument("--paises", default="CR,SV,PA",
                     help="lista separada por comas (CR,SV,PA)")
-    ap.add_argument("--target", default="kronos", choices=["kronos", "iagri"],
-                    help="proyecto Supabase destino (por defecto kronos)")
+    ap.add_argument("--target", default="caia", choices=["caia", "iagri"],
+                    help="proyecto Supabase destino (por defecto caia / CAIA-Core)")
     ap.add_argument("--test", action="store_true",
                     help="muestra mínima por fuente para validar")
     args = ap.parse_args()
